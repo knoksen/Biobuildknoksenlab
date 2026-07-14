@@ -1,0 +1,8 @@
+{
+  "name": "BioBuild Evidence Lab",
+  "description": "Kunnskaps- og forskningsmotor bak Alive Houses. Registrerer, sporer og analyserer bio-baserte materialer, organismer, kjemisk og biologisk sammensetning, forskningsartikler, EPD-er, testresultater, og hypoteser.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

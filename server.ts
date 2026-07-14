@@ -1,0 +1,310 @@
+import express from 'express';
+import path from 'path';
+import dotenv from 'dotenv';
+import { GoogleGenAI, Type } from '@google/genai';
+import { createServer as createViteServer } from 'vite';
+
+dotenv.config();
+
+const app = express();
+app.use(express.json({ limit: '10mb' }));
+
+const PORT = 3000;
+
+// Initialize Google GenAI client lazily to avoid crashing on startup if key is missing
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+      throw new Error('GEMINI_API_KEY environment variable is required. Please set it in the Secrets panel.');
+    }
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return aiClient;
+}
+
+// -------------------------------------------------------------
+// API Endpoints
+// -------------------------------------------------------------
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// 1. Generate Material Profile
+app.post('/api/gemini/generate-material', async (req, res) => {
+  try {
+    const { materialName, category } = req.body;
+    if (!materialName) {
+      return res.status(400).json({ error: 'Material name is required.' });
+    }
+
+    const ai = getAiClient();
+    const prompt = `Du er en ledende forsker innen bio-arkitektur, bio-baserte materialer og regenerative byggemetoder for konseptet "Alive Houses".
+Generer en fullstendig vitenskapelig materialprofil i JSON-format for materialet: "${materialName}" innen kategorien "${category || 'Annet'}".
+
+Svar på NORSK. Vær faglig nøyaktig, realistisk og inspirerende.
+Følgende felter må fylles ut i JSON:
+- name: Navn på materialet
+- description: En god vitenskapelig beskrivelse av materialet og dets rolle i Alive Houses (2-4 setninger)
+- chemicalComposition: Kjemisk sammensetning (f.eks. hvilke molekyler, bindemidler, mineraler)
+- biologicalComposition: Biologisk sammensetning (f.eks. spesifikke organismer som sopp, alger, bakterier, plantefibre)
+- trl: Foreslått TRL-nivå (Technology Readiness Level) som et heltall mellom 1 og 9
+- applicationAreas: Liste med 2-4 reelle bruksområder i bygg (f.eks. "Akustisk isolasjon", "Bærende konstruksjon")
+- suppliers: Liste med 1-3 virkelige eller høyst sannsynlige forskningspartnere/leverandører (f.eks. "NTNU", "SINTEF", "Ecovative")
+- epd: Et objekt med:
+  - gwp: Global Warming Potential i kg CO2 eq per kg (bruk realistisk verdi, gjerne negativt for bio-lagring, f.eks. -1.2 eller 0.15)
+  - recycledContent: Prosentandel resirkulert eller sirkulært innhold (heltall mellom 0 og 100)
+  - lifetime: Forventet levetid i år (heltall)
+  - circularity: En kort setning om sirkularitet (f.eks. "100% komposterbar i natur")
+- testResults: Et objekt med:
+  - fire: Detaljert beskrivelse av brannmotstand
+  - moisture: Detaljert beskrivelse av fuktoppførsel og hygroskopiske egenskaper
+  - strength: Detaljert beskrivelse av trykk/strekkfasthet
+  - durability: Detaljert beskrivelse av bestandighet mot nedbrytning over tid
+  - fireRating: Brannklasse (f.eks. "B-s1, d0", "A1", "D-s2, d0")
+  - strengthMpa: Typisk styrke i MPa (tall)
+  - durabilityYears: Forventet bestandighet i år (tall)
+- healthRisk: Beskrivelse av helse- og miljørisiko, utgassing (VOC), allergener, og eventuell spore-inaktivering.
+- openQuestions: En liste med 1-2 åpne forskningsspørsmål (objekter med "question", "importance" ('Høy'|'Medium'|'Lav'), og "status" ('Åpen')).
+- hypotheses: En liste med 1-2 innledende hypoteser/forsøk (objekter med "title", "hypothesis", "independentVariable", "dependentVariable", "status" ('Utkast')).`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          required: [
+            'name', 'description', 'chemicalComposition', 'biologicalComposition',
+            'trl', 'applicationAreas', 'suppliers', 'epd', 'testResults',
+            'healthRisk', 'openQuestions', 'hypotheses'
+          ],
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            chemicalComposition: { type: Type.STRING },
+            biologicalComposition: { type: Type.STRING },
+            trl: { type: Type.INTEGER },
+            applicationAreas: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            suppliers: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            epd: {
+              type: Type.OBJECT,
+              required: ['gwp', 'recycledContent', 'lifetime', 'circularity'],
+              properties: {
+                gwp: { type: Type.NUMBER },
+                recycledContent: { type: Type.INTEGER },
+                lifetime: { type: Type.INTEGER },
+                circularity: { type: Type.STRING }
+              }
+            },
+            testResults: {
+              type: Type.OBJECT,
+              required: ['fire', 'moisture', 'strength', 'durability', 'fireRating', 'strengthMpa', 'durabilityYears'],
+              properties: {
+                fire: { type: Type.STRING },
+                moisture: { type: Type.STRING },
+                strength: { type: Type.STRING },
+                durability: { type: Type.STRING },
+                fireRating: { type: Type.STRING },
+                strengthMpa: { type: Type.NUMBER },
+                durabilityYears: { type: Type.INTEGER }
+              }
+            },
+            healthRisk: { type: Type.STRING },
+            openQuestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ['question', 'importance', 'status'],
+                properties: {
+                  question: { type: Type.STRING },
+                  importance: { type: Type.STRING },
+                  status: { type: Type.STRING }
+                }
+              }
+            },
+            hypotheses: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ['title', 'hypothesis', 'independentVariable', 'dependentVariable', 'status'],
+                properties: {
+                  title: { type: Type.STRING },
+                  hypothesis: { type: Type.STRING },
+                  independentVariable: { type: Type.STRING },
+                  dependentVariable: { type: Type.STRING },
+                  status: { type: Type.STRING }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error('Gemini returned an empty response.');
+    }
+
+    const materialData = JSON.parse(resultText.trim());
+    res.json(materialData);
+  } catch (error: any) {
+    console.error('Error generating material profile:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke generere materialprofil.' });
+  }
+});
+
+// 2. Generate Experiment Hypothesis based on Open Question
+app.post('/api/gemini/generate-experiment', async (req, res) => {
+  try {
+    const { materialName, question } = req.body;
+    if (!materialName || !question) {
+      return res.status(400).json({ error: 'Material name and question are required.' });
+    }
+
+    const ai = getAiClient();
+    const prompt = `Du er en vitenskapelig rådgiver for BioBuild Norge. Vi forsker på bio-materialer til konseptet "Alive Houses".
+Vi har et ubesvart spørsmål angående materialet "${materialName}":
+Spørsmål: "${question}"
+
+Vennligst utform et vitenskapelig herdetest/laboratorie-eksperiment på NORSK i JSON-format med følgende struktur:
+- title: En kort, fengende og profesjonell tittel på forsøket (f.eks. "Akselerert fuktprøving av...")
+- hypothesis: En klar vitenskapelig hypotese som kan bekreftes eller avkreftes (f.eks. "Dersom vi tilsetter X, så vil parameter Y endres med Z...")
+- independentVariable: Den uavhengige variabelen (hva vi endrer)
+- dependentVariable: Den avhengige variabelen (hva vi måler og observerer)
+- stepByStepPlan: En liste over 3-5 logiske steg for gjennomføring av forsøket.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          required: ['title', 'hypothesis', 'independentVariable', 'dependentVariable', 'stepByStepPlan'],
+          properties: {
+            title: { type: Type.STRING },
+            hypothesis: { type: Type.STRING },
+            independentVariable: { type: Type.STRING },
+            dependentVariable: { type: Type.STRING },
+            stepByStepPlan: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          }
+        }
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error('Gemini returned an empty response.');
+    }
+
+    res.json(JSON.parse(resultText.trim()));
+  } catch (error: any) {
+    console.error('Error generating experiment:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke generere forsøksoppsett.' });
+  }
+});
+
+// 3. General BioBuild Chat Partner
+app.post('/api/gemini/chat', async (req, res) => {
+  try {
+    const { messages, contextMaterial } = req.body;
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Messages array is required.' });
+    }
+
+    const ai = getAiClient();
+    
+    // Build conversation instruction
+    let systemInstruction = `Du er BioBuild AI-Lab-Partner, en kunnskaps- og forskningsmotor som bistår forskere med å utvikle «Alive Houses» (levende, biologiske, og sirkulære hus).
+Svar profesjonelt, vitenskapelig og presist på NORSK.
+Du har dyp kompetanse innen mykologi (sopp), plantefibre, alger, bio-sementering, karbonlagring i bygg, EPD (livsløpsanalyser), TRL-nivåer og byggtekniske krav (brann, fukt, styrke og bestandighet i nordisk klima).`;
+
+    if (contextMaterial) {
+      systemInstruction += `\n\nAkkurat nå ser brukeren på materialet: "${contextMaterial.name}".
+Her er noen nøkkeldata om materialet for din kontekst:
+- Beskrivelse: ${contextMaterial.description}
+- Biologisk sammensetning: ${contextMaterial.biologicalComposition}
+- Kjemisk sammensetning: ${contextMaterial.chemicalComposition}
+- TRL-nivå: TRL ${contextMaterial.trl}
+- EPD GWP: ${contextMaterial.epd?.gwp} kg CO2 eq/kg
+- Brannklasse: ${contextMaterial.testResults?.fireRating || 'Ikke klassifisert'}
+- Styrke: ${contextMaterial.testResults?.strengthMpa || 'N/A'} MPa`;
+    }
+
+    // Format history for Gemini chat structure or standard generateContent
+    // Let's use simple prompt construction for robust history execution
+    let formattedConversation = "";
+    const lastMessages = messages.slice(-8); // Limit history length to preserve token budget
+    for (const msg of lastMessages) {
+      const roleName = msg.role === 'user' ? 'Forsker' : 'BioBuild AI-Lab-Partner';
+      formattedConversation += `${roleName}: ${msg.content}\n\n`;
+    }
+    formattedConversation += `BioBuild AI-Lab-Partner:`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: formattedConversation,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      }
+    });
+
+    res.json({ reply: response.text || 'Beklager, jeg kunne ikke formulere et svar.' });
+  } catch (error: any) {
+    console.error('Error in lab chat:', error);
+    res.status(500).json({ error: error.message || 'Feil ved tilkobling til Gemini API.' });
+  }
+});
+
+// -------------------------------------------------------------
+// Vite or Production Static Serve
+// -------------------------------------------------------------
+async function bootstrap() {
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+    console.log('Vite middleware mounted in development mode');
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+    console.log(`Serving static production files from: ${distPath}`);
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`BioBuild Evidence Lab server running on http://0.0.0.0:${PORT}`);
+  });
+}
+
+bootstrap().catch((err) => {
+  console.error('Failed to bootstrap Express server:', err);
+});
