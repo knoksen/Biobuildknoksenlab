@@ -57,4 +57,27 @@ export interface BioMaterial {
   articles: ResearchArticle[];
   openQuestions: OpenQuestion[];
   experiments: Experiment[];
+  measurements?: MeasurementPoint[];
+  ownerId?: string;
+}
+
+export interface MeasurementPoint {
+  id: string;
+  parameter: 'strength' | 'moisture' | 'gwp';
+  label: string;
+  value: number;
+  experimentTitle?: string;
+  timestamp: string;
+}
+
+export interface Researcher {
+  id: string;
+  name: string;
+  title: string;
+  department: string;
+  expertise: string[];
+  avatar: string;
+  activeHours: number;
+  successRate: number;
+  bio: string;
 }

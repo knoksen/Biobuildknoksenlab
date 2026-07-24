@@ -35,10 +35,35 @@ import {
   AlertTriangle,
   X,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Sliders,
+  Video,
+  Terminal,
+  Activity,
+  Bot
 } from 'lucide-react';
-import { initialBioMaterials } from './data';
-import { BioMaterial, ResearchArticle, OpenQuestion, Experiment } from './types';
+import { initialBioMaterials, initialResearchers } from './data';
+import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, Researcher, MeasurementPoint } from './types';
+import UnrealBridge from './components/UnrealBridge';
+import EierallokeringView from './components/EierallokeringView';
+import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport } from './utils/pdfGenerator';
+
+import {
+  ResponsiveContainer,
+  LineChart as RecLineChart,
+  Line,
+  BarChart as RecBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RecTooltip,
+  Legend,
+  AreaChart,
+  Area,
+  Cell
+} from 'recharts';
+
 
 export default function App() {
   // Load initial materials from localStorage or initialBioMaterials
@@ -59,11 +84,75 @@ export default function App() {
     localStorage.setItem('biobuild_materials', JSON.stringify(materials));
   }, [materials]);
 
+  // Global View State
+  const [globalView, setGlobalView] = useState<'materials' | 'unreal' | 'eierallokering'>('materials');
+
+  // Load initial researchers from localStorage or initialResearchers
+  const [researchers, setResearchers] = useState<Researcher[]>(() => {
+    const saved = localStorage.getItem('biobuild_researchers');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed parsing saved researchers', e);
+      }
+    }
+    return initialResearchers;
+  });
+
+  // Save changes to researchers
+  useEffect(() => {
+    localStorage.setItem('biobuild_researchers', JSON.stringify(researchers));
+  }, [researchers]);
+
+  // Unreal Engine & MetaHuman Simulator States
+  const [unrealConfig, setUnrealConfig] = useState({
+    engineVersion: '5.4.3-Release',
+    pixelStreamingPort: 3000,
+    streamActive: true,
+    fps: 60,
+    shaderCount: 1450,
+    shaderCompiled: true,
+    lightingPreset: 'Studio Neutral',
+    faceRig: {
+      blink: 12,
+      mouthOpen: 0,
+      neckTilt: 5,
+      creativeExpressiveness: 80,
+      microDetails: 95
+    }
+  });
+
+  const [evaChatMessages, setEvaChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
+    { role: 'assistant', content: 'Hei! Jeg er Eva, din virtuelle MetaHuman-forskningspartner drevet av Unreal Engine 5 og generative AI-modeller. Hvilket bio-materiale eller hvilken eierallokering skal vi simulere i dag?' }
+  ]);
+  const [evaInputText, setEvaInputText] = useState('');
+  const [evaIsThinking, setEvaIsThinking] = useState(false);
+  const [unrealLogs, setUnrealLogs] = useState<string[]>([
+    '[System] Initializing Vulkan RHI Backend...',
+    '[System] Pixel Streaming Plugin Loaded. Binding to internal port 3000 Loop-Back.',
+    '[MetaHuman] Synchronized MetaHuman DNA assets (Eva_v5.4.3).',
+    '[Render] Dynamic lighting shadows generated.',
+    '[System] Stream active: 60 FPS, Latency: 4.2ms.'
+  ]);
+
+  // Predictive AI Allocation States
+  const [selectedMaterialIdForPredictiveAI, setSelectedMaterialIdForPredictiveAI] = useState<string>(materials[0]?.id || '');
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState<string | null>(null);
+  const [predictedAllocation, setPredictedAllocation] = useState<{
+    ownerId: string;
+    confidence: number;
+    reasoning: string;
+    workloadFactor: string;
+    successProbability: number;
+  } | null>(null);
+
   // UI State
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>(materials[0]?.id || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Alle');
-  const [activeTab, setActiveTab] = useState<'oversikt' | 'tester' | 'artikler' | 'sporsmal' | 'eksperimenter'>('oversikt');
+  const [activeTab, setActiveTab] = useState<'oversikt' | 'tester' | 'artikler' | 'sporsmal' | 'eksperimenter' | 'analyse'>('oversikt');
 
   // New material creation states
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -86,6 +175,14 @@ export default function App() {
   const [manualLifetime, setManualLifetime] = useState(30);
   const [manualCircularity, setManualCircularity] = useState('100% sirkulær');
 
+  // Category suggestion state
+  const [categorySuggestLoading, setCategorySuggestLoading] = useState(false);
+  const [suggestedCategoryResult, setSuggestedCategoryResult] = useState<{
+    suggestedCategory: BioMaterial['category'];
+    reasoning: string;
+    confidence: number;
+  } | null>(null);
+
   // Sub-forms states for the active material
   const [newArticleTitle, setNewArticleTitle] = useState('');
   const [newArticleAuthors, setNewArticleAuthors] = useState('');
@@ -101,6 +198,14 @@ export default function App() {
   const [newExpHypothesis, setNewExpHypothesis] = useState('');
   const [newExpIndep, setNewExpIndep] = useState('');
   const [newExpDep, setNewExpDep] = useState('');
+
+  // Resultatanalyse Measurement Inputs State
+  const [newMeasParam, setNewMeasParam] = useState<'strength' | 'moisture' | 'gwp'>('strength');
+  const [newMeasLabel, setNewMeasLabel] = useState('');
+  const [newMeasValue, setNewMeasValue] = useState<number | ''>('');
+  const [newMeasExpId, setNewMeasExpId] = useState('');
+  const [selectedAnalyseMetric, setSelectedAnalyseMetric] = useState<'styrke' | 'fuktighet' | 'gwp'>('styrke');
+
 
   // AI Chat State
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
@@ -120,6 +225,9 @@ export default function App() {
   // Camera & Photo State
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [referenceImage, setReferenceImage] = useState<string | null>('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80');
+  const [compareViewMode, setCompareViewMode] = useState<'slider' | 'side-by-side'>('slider');
+  const [sliderPosition, setSliderPosition] = useState<number>(50);
   const [photoDescription, setPhotoDescription] = useState('');
   const [selectedExpIdForPhoto, setSelectedExpIdForPhoto] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -207,13 +315,27 @@ export default function App() {
     }
   };
 
+  const handleReferenceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReferenceImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveCapturedPhoto = (e: React.FormEvent) => {
     e.preventDefault();
     if (!capturedImage || !selectedExpIdForPhoto || !activeMaterial) return;
 
     const dateStr = new Date().toLocaleDateString('no-NO') + ' ' + new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
     const descriptionText = photoDescription.trim() || 'Fysisk testresultat registrert med laboratoriekamera.';
-    const logMessage = `${dateStr}: [Foto-dokumentasjon] ${descriptionText} |||image:${capturedImage}`;
+    let logMessage = `${dateStr}: [Foto-dokumentasjon] ${descriptionText} |||image:${capturedImage}`;
+    if (referenceImage) {
+      logMessage += `|||ref:${referenceImage}`;
+    }
 
     setMaterials(prev => prev.map(m => {
       if (m.id === activeMaterial.id) {
@@ -235,8 +357,204 @@ export default function App() {
 
     setCapturedImage(null);
     setPhotoDescription('');
-    alert('Foto og logg ble lagret i eksperimentets historikk!');
+    alert('Foto og logg med før-og-etter sammenligning ble lagret i eksperimentets historikk!');
   };
+
+  const handleSaveMeasurement = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newMeasValue === '' || !newMeasLabel.trim() || !activeMaterial) return;
+
+    const selectedExp = activeMaterial.experiments.find(exp => exp.id === newMeasExpId);
+
+    const newPoint = {
+      id: `meas-${Date.now()}`,
+      parameter: newMeasParam,
+      label: newMeasLabel.trim(),
+      value: Number(newMeasValue),
+      experimentTitle: selectedExp ? selectedExp.title : undefined,
+      timestamp: new Date().toLocaleDateString('no-NO')
+    };
+
+    setMaterials(prev => prev.map(m => {
+      if (m.id === activeMaterial.id) {
+        return {
+          ...m,
+          measurements: [...(m.measurements || []), newPoint]
+        };
+      }
+      return m;
+    }));
+
+    setNewMeasLabel('');
+    setNewMeasValue('');
+    setNewMeasExpId('');
+  };
+
+  const handleDeleteMeasurement = (measId: string) => {
+    if (!activeMaterial) return;
+    setMaterials(prev => prev.map(m => {
+      if (m.id === activeMaterial.id) {
+        return {
+          ...m,
+          measurements: (m.measurements || []).filter(item => item.id !== measId)
+        };
+      }
+      return m;
+    }));
+  };
+
+  // Generate Strength over time data
+  const getStrengthData = () => {
+    const finalStrength = activeMaterial?.testResults?.strengthMpa || 5;
+    
+    // Default curve points for standard materials or interpolated for new materials
+    let baseline = [
+      { day: 1, verdi: Number((finalStrength * 0.1).toFixed(2)), type: 'Estimert herdeforløp' },
+      { day: 3, verdi: Number((finalStrength * 0.35).toFixed(2)), type: 'Estimert herdeforløp' },
+      { day: 7, verdi: Number((finalStrength * 0.65).toFixed(2)), type: 'Estimert herdeforløp' },
+      { day: 14, verdi: Number((finalStrength * 0.85).toFixed(2)), type: 'Estimert herdeforløp' },
+      { day: 28, verdi: finalStrength, type: 'Målverdi (Sluttfasthet)' },
+    ];
+
+    if (activeMaterial?.id === 'mat-1') {
+      baseline = [
+        { day: 1, verdi: 0.01, type: 'Estimert herdeforløp' },
+        { day: 3, verdi: 0.04, type: 'Estimert herdeforløp' },
+        { day: 7, verdi: 0.10, type: 'Estimert herdeforløp' },
+        { day: 14, verdi: 0.16, type: 'Estimert herdeforløp' },
+        { day: 28, verdi: 0.20, type: 'Målverdi (Sluttfasthet)' },
+      ];
+    } else if (activeMaterial?.id === 'mat-2') {
+      baseline = [
+        { day: 1, verdi: 0.05, type: 'Estimert herdeforløp' },
+        { day: 3, verdi: 0.18, type: 'Estimert herdeforløp' },
+        { day: 7, verdi: 0.40, type: 'Estimert herdeforløp' },
+        { day: 14, verdi: 0.65, type: 'Estimert herdeforløp' },
+        { day: 28, verdi: 0.80, type: 'Målverdi (Sluttfasthet)' },
+      ];
+    } else if (activeMaterial?.id === 'mat-3') {
+      baseline = [
+        { day: 1, verdi: 12.5, type: 'Estimert herdeforløp' },
+        { day: 3, verdi: 24.0, type: 'Estimert herdeforløp' },
+        { day: 7, verdi: 32.5, type: 'Estimert herdeforløp' },
+        { day: 14, verdi: 38.0, type: 'Estimert herdeforløp' },
+        { day: 28, verdi: 42.0, type: 'Målverdi (Sluttfasthet)' },
+      ];
+    }
+
+    // Merge in custom strength measurements from activeMaterial.measurements
+    const customPoints = (activeMaterial?.measurements || [])
+      .filter(m => m.parameter === 'strength')
+      .map(m => {
+        // Try to parse day number from label, e.g. "Dag 12" -> 12, or default to 15
+        const dayMatch = m.label.match(/\d+/);
+        const parsedDay = dayMatch ? parseInt(dayMatch[0], 10) : 15;
+        return {
+          day: parsedDay,
+          verdi: m.value,
+          type: m.experimentTitle ? `Måling: ${m.experimentTitle}` : 'Egendefinert måling',
+          id: m.id
+        };
+      });
+
+    // Combine and sort by day
+    const combined = [...baseline, ...customPoints].sort((a, b) => a.day - b.day);
+    return combined;
+  };
+
+  // Generate Moisture absorption over RH % data
+  const getMoistureData = () => {
+    let baseline = [
+      { rh: 10, verdi: 1.2, type: 'Referansekurve' },
+      { rh: 30, verdi: 3.5, type: 'Referansekurve' },
+      { rh: 50, verdi: 6.8, type: 'Referansekurve' },
+      { rh: 70, verdi: 9.5, type: 'Referansekurve' },
+      { rh: 90, verdi: 12.0, type: 'Referansekurve' },
+    ];
+
+    if (activeMaterial?.id === 'mat-1') {
+      baseline = [
+        { rh: 10, verdi: 1.2, type: 'Referansekurve' },
+        { rh: 30, verdi: 3.5, type: 'Referansekurve' },
+        { rh: 50, verdi: 6.8, type: 'Referansekurve' },
+        { rh: 70, verdi: 9.5, type: 'Referansekurve' },
+        { rh: 90, verdi: 12.0, type: 'Referansekurve' },
+      ];
+    } else if (activeMaterial?.id === 'mat-2') {
+      baseline = [
+        { rh: 10, verdi: 2.0, type: 'Referansekurve' },
+        { rh: 30, verdi: 4.8, type: 'Referansekurve' },
+        { rh: 50, verdi: 8.5, type: 'Referansekurve' },
+        { rh: 70, verdi: 12.2, type: 'Referansekurve' },
+        { rh: 90, verdi: 16.5, type: 'Referansekurve' },
+      ];
+    } else if (activeMaterial?.id === 'mat-3') {
+      baseline = [
+        { rh: 10, verdi: 0.5, type: 'Referansekurve' },
+        { rh: 30, verdi: 1.2, type: 'Referansekurve' },
+        { rh: 50, verdi: 2.1, type: 'Referansekurve' },
+        { rh: 70, verdi: 3.2, type: 'Referansekurve' },
+        { rh: 90, verdi: 4.5, type: 'Referansekurve' },
+      ];
+    } else {
+      const isMoistureHigh = activeMaterial?.testResults?.moisture?.toLowerCase().includes('høy') || false;
+      const factor = isMoistureHigh ? 1.5 : 1.0;
+      baseline = [
+        { rh: 10, verdi: Number((0.8 * factor).toFixed(1)), type: 'Referansekurve' },
+        { rh: 30, verdi: Number((2.2 * factor).toFixed(1)), type: 'Referansekurve' },
+        { rh: 50, verdi: Number((4.5 * factor).toFixed(1)), type: 'Referansekurve' },
+        { rh: 70, verdi: Number((7.0 * factor).toFixed(1)), type: 'Referansekurve' },
+        { rh: 90, verdi: Number((10.0 * factor).toFixed(1)), type: 'Referansekurve' },
+      ];
+    }
+
+    // Merge in custom moisture measurements
+    const customPoints = (activeMaterial?.measurements || [])
+      .filter(m => m.parameter === 'moisture')
+      .map(m => {
+        const rhMatch = m.label.match(/\d+/);
+        const parsedRh = rhMatch ? parseInt(rhMatch[0], 10) : 50;
+        return {
+          rh: parsedRh,
+          verdi: m.value,
+          type: m.experimentTitle ? `Måling: ${m.experimentTitle}` : 'Egendefinert måling',
+          id: m.id
+        };
+      });
+
+    const combined = [...baseline, ...customPoints].sort((a, b) => a.rh - b.rh);
+    return combined;
+  };
+
+  // Generate GWP Comparison Data
+  const getGwpBenchmarkData = () => {
+    const list = materials.map(m => ({
+      name: m.name.length > 20 ? m.name.substring(0, 18) + '...' : m.name,
+      gwp: m.epd?.gwp || 0,
+      isCurrent: m.id === activeMaterial?.id,
+      originalName: m.name
+    }));
+
+    const hasConcreteRef = list.some(item => item.originalName.toLowerCase().includes('tradisjonell betong') || item.originalName.toLowerCase().includes('referansebetong'));
+    if (!hasConcreteRef) {
+      list.push({
+        name: 'Tradisjonell Betong',
+        gwp: 380,
+        isCurrent: false,
+        originalName: 'Tradisjonell Portlandbetong'
+      });
+      list.push({
+        name: 'EPS-Isolasjon (EPS)',
+        gwp: 2.5,
+        isCurrent: false,
+        originalName: 'Ekspandert polystyren'
+      });
+    }
+
+    return list.sort((a, b) => a.gwp - b.gwp);
+  };
+
+
 
   const handleSelectMaterial = (id: string) => {
     setSelectedMaterialId(id);
@@ -414,6 +732,66 @@ export default function App() {
 
     setShowAddModal(false);
     setActiveTab('oversikt');
+  };
+
+  // 2b. SUGGEST CATEGORY FROM DESCRIPTION (AI / LOCAL ALGORITHM)
+  const handleSuggestCategory = async (name: string, description: string) => {
+    if (!name.trim() && !description.trim()) return;
+
+    setCategorySuggestLoading(true);
+    setSuggestedCategoryResult(null);
+
+    try {
+      const res = await fetch('/api/gemini/suggest-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+
+      if (!res.ok) {
+        throw new Error('Category suggestion API failed');
+      }
+
+      const data = await res.json();
+      setSuggestedCategoryResult(data);
+    } catch (err) {
+      console.warn('Category suggestion API failed, running intelligent local keyword algorithm fallback...', err);
+
+      const text = (name + ' ' + description).toLowerCase();
+      let cat: BioMaterial['category'] = 'Plantebaserte';
+      let reasoning = '';
+      let confidence = 85;
+
+      if (text.match(/mycel|sopp|kitin|ganoderma|pleurotus|spore|hyfe|mykolog/i)) {
+        cat = 'Mykologiske';
+        reasoning = 'Teksten påviste soppstruktur, kitin, mykologiske sporer eller mycelium-baserte egenskaper.';
+        confidence = 94;
+      } else if (text.match(/alge|bakteri|alginat|cyanobakteri|kalkstein|bio-sement|micp|diatome|spirulina|tang|tare/i)) {
+        cat = 'Alger & Bakterier';
+        reasoning = 'Teksten identifiserte alginat, bakterieluer eller biokjemisk kalkutfelling.';
+        confidence = 91;
+      } else if (text.match(/tre|kork|gran|furu|massivtre|clt|spon|flis|lignin|bark|trefiber/i)) {
+        cat = 'Tre & Kork';
+        reasoning = 'Teksten viser kjennetegn på trefibre, lignin, massivtre eller korkkomposisjoner.';
+        confidence = 89;
+      } else if (text.match(/hamp|lin|halm|strå|jute|fiber|plante|cellulose|biomasse|bambus|frø|stengel/i)) {
+        cat = 'Plantebaserte';
+        reasoning = 'Teksten refererer til plantefibre, halm/strå eller vegetabilsk biomasse.';
+        confidence = 88;
+      } else {
+        cat = 'Plantebaserte';
+        reasoning = 'Anbefalt primærkategori basert på generell bio-basert matriks.';
+        confidence = 74;
+      }
+
+      setSuggestedCategoryResult({
+        suggestedCategory: cat,
+        reasoning,
+        confidence
+      });
+    } finally {
+      setCategorySuggestLoading(false);
+    }
   };
 
   // 3. DELETE MATERIAL
@@ -771,6 +1149,248 @@ export default function App() {
     }, 150);
   };
 
+  // 11. PREDICT RESEARCH OWNER (AI)
+  const handlePredictOwner = async () => {
+    const targetMaterial = materials.find(m => m.id === selectedMaterialIdForPredictiveAI);
+    if (!targetMaterial) return;
+
+    setPredictionLoading(true);
+    setPredictionError(null);
+    setPredictedAllocation(null);
+
+    try {
+      const response = await fetch('/api/gemini/predict-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          material: targetMaterial,
+          researchers: researchers
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Server returned an error');
+      }
+
+      const data = await response.json();
+      setPredictedAllocation(data);
+
+      // Add a cool system log to the Unreal/MetaHuman panel too
+      setUnrealLogs(prev => [
+        `[Predictive AI] Ran allocation analysis on "${targetMaterial.name}".`,
+        `[Predictive AI] Optimal Owner: ${researchers.find(r => r.id === data.ownerId)?.name || 'Ukjent'} (Confidence: ${data.confidence}%).`,
+        ...prev
+      ]);
+
+    } catch (err: any) {
+      console.warn('AI Predict Owner API failed, running high-fidelity local predictive engine fallback...', err);
+      
+      // RUN SCIENTIFIC LOCAL PREDICTIVE ALGORITHM FALLBACK
+      // Simulate think delay
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      let matchedOwnerId = 'res-1'; // Default
+      let maxScore = -1;
+      const scores: { [key: string]: number } = {};
+
+      const descLower = (targetMaterial.description || '').toLowerCase() + ' ' + (targetMaterial.name || '').toLowerCase();
+      const compLower = (targetMaterial.chemicalComposition || '').toLowerCase() + ' ' + (targetMaterial.biologicalComposition || '').toLowerCase();
+      const combinedText = descLower + ' ' + compLower;
+
+      researchers.forEach(res => {
+        let score = 0;
+        // Match expertise tags
+        res.expertise.forEach(exp => {
+          if (combinedText.includes(exp.toLowerCase().substring(0, 5))) {
+            score += 2.5;
+          }
+        });
+
+        // Category matching
+        if (targetMaterial.category === 'Mykologiske' && res.id === 'res-1') {
+          score += 6.0;
+        } else if (targetMaterial.category === 'Alger & Bakterier' && res.id === 'res-2') {
+          score += 6.0;
+        } else if (targetMaterial.category === 'Plantebaserte' && res.id === 'res-4') {
+          score += 6.0;
+        }
+
+        // Carbon check
+        if (targetMaterial.epd?.gwp !== undefined && targetMaterial.epd.gwp < 0 && res.id === 'res-3') {
+          score += 4.0;
+        }
+
+        // Mechanical properties match
+        if (targetMaterial.testResults?.strengthMpa !== undefined && targetMaterial.testResults.strengthMpa > 10 && res.id === 'res-2') {
+          score += 3.0;
+        }
+
+        // Workload dampener to prevent over-allocation (load balance)
+        score -= (res.activeHours * 0.015);
+
+        // MetaHuman partner gets a random innovative bonus
+        if (res.id === 'res-5') {
+          score += 1.5; // Always moderate option
+        }
+
+        scores[res.id] = score;
+
+        if (score > maxScore) {
+          maxScore = score;
+          matchedOwnerId = res.id;
+        }
+      });
+
+      // Formulate detailed reasoning and workload descriptions dynamically
+      const matchedRes = researchers.find(r => r.id === matchedOwnerId) || researchers[0];
+      let reasoning = '';
+      let workloadFactor = '';
+      let confidence = Math.min(98, Math.max(72, Math.floor(80 + maxScore * 3)));
+      let successProbability = Math.min(99, Math.max(65, Math.floor(matchedRes.successRate - (matchedRes.activeHours > 130 ? 5 : 0) + (maxScore > 5 ? 4 : -2))));
+
+      if (matchedRes.id === 'res-1') {
+        reasoning = `Materialets mykologiske profil og organiske sammensetning krever spisskompetanse innen kitinstrukturering og sopphyfer. Dr. Marianne Jensen ble valgt fordi hennes forskningshistorikk viser banebrytende resultater med Ganoderma-isolering.`;
+        workloadFactor = `Dr. Marianne Jensen har for øyeblikket en moderat arbeidsmengde på ${matchedRes.activeHours} aktive timer. Hun har tilstrekkelig kapasitet til å lede dette studiet.`;
+      } else if (matchedRes.id === 'res-2') {
+        reasoning = `Materialets høye trykkfasthetskrav eller bakteriebaserte kalksteinsutfelling (MICP) samsvarer perfekt med Prof. Lars Solbergs bakgrunn innen bio-sementering og strukturell mekanikk.`;
+        workloadFactor = `Prof. Lars Solbergs nåværende belastning er på ${matchedRes.activeHours} timer. Han har tilgjengelig kjerneforskningstid til å koordinere fasthetstestingene.`;
+      } else if (matchedRes.id === 'res-3') {
+        reasoning = `Dette materialets ekstremt lave drivhuspotensial (GWP) og sterke sirkulære insentiver krever Dr. Elena Rostova sin dype kompetanse innen EPD-livsløpsvurderinger og miljømessig optimalisering.`;
+        workloadFactor = `Dr. Elena Rostova har en lav belastning på ${matchedRes.activeHours} timer, noe som gjør henne ideell til å lede dette livsløpsstudiet umiddelbart.`;
+      } else if (matchedRes.id === 'res-4') {
+        reasoning = `Med materialets fiberholdige sammensetning og fokus på plante-biomasse som hampkalk og plantefiber, er Dr. Johan Dahl den absolutt mest kvalifiserte kandidaten for å optimalisere den termiske herde-matrisen.`;
+        workloadFactor = `Dr. Johan Dahl har ${matchedRes.activeHours} timer belastning. Arbeidsbelastningen er balansert og gir god tid til laboppfølging.`;
+      } else {
+        reasoning = `Dette tverrfaglige eller uavklarte materialet krever avansert generativ materialsyntese. MetaHuman-partneren Eva-01 ble valgt for å kjøre prediktive 3D-simuleringer i Unreal-miljøet før fysisk støping.`;
+        workloadFactor = `Eva-01 (MetaHuman) kjører i sky-instanser og har ubegrenset simultankapasitet på tvers av prosjektene.`;
+      }
+
+      setPredictedAllocation({
+        ownerId: matchedOwnerId,
+        confidence,
+        reasoning,
+        workloadFactor,
+        successProbability
+      });
+
+      setUnrealLogs(prev => [
+        `[Predictive AI] Ran local allocation analysis on "${targetMaterial.name}".`,
+        `[Predictive AI] Optimal Owner: ${matchedRes.name} (Confidence: ${confidence}%).`,
+        ...prev
+      ]);
+    } finally {
+      setPredictionLoading(false);
+    }
+  };
+
+  // 12. APPROVE & ASSIGN OWNER
+  const handleApproveOwner = () => {
+    if (!predictedAllocation) return;
+    const { ownerId } = predictedAllocation;
+    const targetMaterial = materials.find(m => m.id === selectedMaterialIdForPredictiveAI);
+    if (!targetMaterial) return;
+
+    // Update material owner
+    setMaterials(prev => prev.map(m => {
+      if (m.id === targetMaterial.id) {
+        return { ...m, ownerId };
+      }
+      return m;
+    }));
+
+    // Update researcher hours
+    setResearchers(prev => prev.map(res => {
+      if (res.id === ownerId) {
+        return { ...res, activeHours: res.activeHours + 25 }; // add 25 research hours for owning this material
+      }
+      return res;
+    }));
+
+    // Create a cool notification log
+    setUnrealLogs(prev => [
+      `[Database] Successfully assigned "${targetMaterial.name}" to ${researchers.find(r => r.id === ownerId)?.name}.`,
+      `[Database] Research owner updated in live schema. Allocated 25 research hours.`,
+      ...prev
+    ]);
+
+    // Clear prediction card so user sees success state
+    setPredictedAllocation(null);
+  };
+
+  // 13. CHAT WITH METAHUMAN EVA-01
+  const handleSendEvaMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!evaInputText.trim()) return;
+
+    const userMessage = evaInputText;
+    setEvaChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setEvaInputText('');
+    setEvaIsThinking(true);
+
+    // Let's adjust the mouth and expression sliders to look interactive!
+    setUnrealConfig(prev => ({
+      ...prev,
+      faceRig: {
+        ...prev.faceRig,
+        mouthOpen: 35,
+        blink: 0,
+        neckTilt: 15
+      }
+    }));
+
+    try {
+      const response = await fetch('/api/gemini/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'assistant', content: 'Du er Eva-01, en virtuell MetaHuman-forskningspartner generert i Unreal Engine 5. Svar som en intelligent, futuristisk, engasjerende AI-rådgiver på norsk.' },
+            ...evaChatMessages, 
+            { role: 'user', content: userMessage }
+          ].map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          contextMaterial: materials.find(m => m.id === selectedMaterialIdForPredictiveAI)
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('MetaHuman API failed');
+      }
+
+      const data = await response.json();
+      setEvaChatMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      
+      // Update logs too
+      setUnrealLogs(prev => [
+        `[Eva-01] Responded: "${data.reply.substring(0, 30)}..."`,
+        ...prev
+      ]);
+
+    } catch (err: any) {
+      console.warn('Eva Gemini chat failed, using local fallback response', err);
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const responseFallback = `Interessant innspill! Som din MetaHuman-partner i Unreal Engine har jeg simulert dette scenarioet. Vi bør se på hvordan cellestrukturen i materialet reagerer under kontinuerlig stressbelastning i det virtuelle klimakammeret.`;
+      
+      setEvaChatMessages(prev => [...prev, { role: 'assistant', content: responseFallback }]);
+    } finally {
+      setEvaIsThinking(false);
+      // Reset sliders to normal listening/idle state
+      setUnrealConfig(prev => ({
+        ...prev,
+        faceRig: {
+          ...prev.faceRig,
+          mouthOpen: 0,
+          blink: 12,
+          neckTilt: 5
+        }
+      }));
+    }
+  };
+
+
   // Helper colors for TRL
   const getTrlBg = (trl: number) => {
     if (trl >= 8) return 'bg-emerald-700 text-white';
@@ -884,8 +1504,56 @@ export default function App() {
         </div>
       </header>
 
-      {/* ----------------- CORE WORKSPACE GRID ----------------- */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl w-full mx-auto p-4 md:p-6 gap-6">
+      {/* ----------------- GLOBAL WORKSPACE SELECTOR ----------------- */}
+      <div id="global-workspace-selector" className="bg-[#eeede6]/50 border-b border-[#e2e1d5] px-4 md:px-8 py-3 flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          <button
+            id="btn-view-materials"
+            onClick={() => setGlobalView('materials')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+              globalView === 'materials'
+                ? 'bg-[#5A5A40] text-white border-[#5A5A40] shadow-sm'
+                : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
+            }`}
+          >
+            <Beaker className="w-3.5 h-3.5" />
+            <span>🧪 Bio-Materialer Lab</span>
+          </button>
+          <button
+            id="btn-view-unreal"
+            onClick={() => setGlobalView('unreal')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+              globalView === 'unreal'
+                ? 'bg-indigo-950 text-white border-indigo-950 shadow-sm'
+                : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5 text-indigo-400" />
+            <span>🎮 Unreal & MetaHuman Bridge</span>
+          </button>
+          <button
+            id="btn-view-eierallokering"
+            onClick={() => setGlobalView('eierallokering')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+              globalView === 'eierallokering'
+                ? 'bg-amber-900 text-white border-amber-900 shadow-sm'
+                : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 text-amber-500" />
+            <span>📊 AI Eierallokering & Statistikk</span>
+          </button>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#2c2c24]/60 bg-white/40 px-3 py-1 rounded-lg border border-[#e2e1d5]">
+          <Activity className="w-3 h-3 text-emerald-600 animate-pulse" />
+          <span>Unreal Port 3000 Loop-Back: AKTIV</span>
+        </div>
+      </div>
+
+      {globalView === 'materials' && (
+        /* ----------------- CORE WORKSPACE GRID ----------------- */
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl w-full mx-auto p-4 md:p-6 gap-6">
+
         
         {/* ================= LEFT SIDEBAR: REGISTRY & SEARCH ================= */}
         <aside id="material-sidebar" className="w-full lg:w-80 flex flex-col gap-4 shrink-0">
@@ -1060,13 +1728,43 @@ export default function App() {
                 </div>
 
                 <div className="max-w-2xl relative z-1">
-                  <div className="flex items-center gap-2.5 mb-2.5">
-                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase border ${getCategoryColor(activeMaterial.category)}`}>
-                      {activeMaterial.category}
-                    </span>
-                    <span className="text-[11px] font-mono opacity-50 font-bold">
-                      ID: {activeMaterial.id}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase border ${getCategoryColor(activeMaterial.category)}`}>
+                        {activeMaterial.category}
+                      </span>
+                      <span className="text-[11px] font-mono opacity-50 font-bold">
+                        ID: {activeMaterial.id}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        id="btn-download-pdf-report"
+                        onClick={() => {
+                          const owner = researchers.find(r => r.id === activeMaterial.ownerId);
+                          generateMaterialPDFReport(activeMaterial, owner);
+                        }}
+                        className="flex items-center gap-1.5 bg-[#5A5A40] hover:bg-[#4a4a34] text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer"
+                        title="Generer og last ned generell materialrapport"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-amber-200" />
+                        <span>Materialrapport</span>
+                      </button>
+
+                      <button
+                        id="btn-download-experiment-pdf-report"
+                        onClick={() => {
+                          const owner = researchers.find(r => r.id === activeMaterial.ownerId);
+                          generateExperimentAndTestDataPDFReport(activeMaterial, owner);
+                        }}
+                        className="flex items-center gap-1.5 bg-[#2c5282] hover:bg-[#1a365d] text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer"
+                        title="Eksporter alle eksperimenter, logger og testdata til PDF"
+                      >
+                        <Beaker className="w-3.5 h-3.5 text-blue-200" />
+                        <span>Eksporter Eksperiment- & Testdata (PDF)</span>
+                      </button>
+                    </div>
                   </div>
 
                   <h2 className="text-2xl md:text-3xl font-serif italic text-[#2c2c24] font-bold">
@@ -1167,6 +1865,18 @@ export default function App() {
                 >
                   <Cpu className="w-3.5 h-3.5" />
                   Hypoteser & Forsøk ({activeMaterial.experiments.length})
+                </button>
+                <button
+                  id="tab-btn-analyse"
+                  onClick={() => setActiveTab('analyse')}
+                  className={`text-xs uppercase tracking-wider font-bold py-2.5 px-4 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                    activeTab === 'analyse'
+                      ? 'bg-white text-[#5A5A40] shadow-xs border-b-2 border-[#5A5A40]'
+                      : 'text-[#2c2c24]/70 hover:bg-[#eeede6] hover:text-[#2c2c24]'
+                  }`}
+                >
+                  <LineChart className="w-3.5 h-3.5" />
+                  Resultatanalyse
                 </button>
               </div>
 
@@ -1301,15 +2011,43 @@ export default function App() {
                 {/* ----------------- TAB: LAB TESTER & TEKNISKE METRIKKER ----------------- */}
                 {activeTab === 'tester' && (
                   <div className="space-y-6">
-                    {/* Kamera Foto-dokumentasjon av testresultater */}
-                    <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-sm">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 border-b border-[#eeede6] pb-4">
+                    {/* Top Export Banner */}
+                    <div className="bg-[#f0f4f8] rounded-2xl p-5 border border-[#cbd5e1] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#5A5A40] text-white flex items-center justify-center shrink-0 shadow-xs">
+                          <Beaker className="w-5 h-5 text-amber-100" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e293b]">
+                            Testresultater & Laboratoriedata for {activeMaterial.name}
+                          </h3>
+                          <p className="text-[11px] text-[#475569] mt-0.5">
+                            Oversikt over brann-, fukt-, styrke- og bestandighetstester med målinger og bilder.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const owner = researchers.find(r => r.id === activeMaterial.ownerId);
+                          generateExperimentAndTestDataPDFReport(activeMaterial, owner);
+                        }}
+                        className="bg-[#2c5282] hover:bg-[#1a365d] text-white text-xs font-bold py-2 px-4 rounded-xl transition-all flex items-center gap-2 shadow-xs shrink-0 cursor-pointer"
+                        title="Eksporter testdata og eksperiment-logger til PDF"
+                      >
+                        <FileText className="w-4 h-4 text-blue-200" />
+                        <span>Eksporter Testdata (PDF)</span>
+                      </button>
+                    </div>
+
+                    {/* Kamera Foto-dokumentasjon & Før-og-Etter Sammenligning */}
+                    <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-sm space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#eeede6] pb-4">
                         <div>
                           <h3 className="text-xs font-bold uppercase tracking-widest text-[#5A5A40] flex items-center gap-1.5">
-                            <Camera className="w-4 h-4 text-[#5A5A40]" /> Foto-dokumentasjon av testresultater
+                            <Camera className="w-4 h-4 text-[#5A5A40]" /> Foto-dokumentasjon & Før-og-Etter Sammenligning
                           </h3>
                           <p className="text-[11px] text-gray-500 mt-1">
-                            Ta bilder av fysiske lab-tester og lagre dem direkte i eksperimentets logghistorikk.
+                            Sammenlign referansebilde (Før-bilde) med nye testresultater (Etter-bilde) side-om-side eller med interaktiv glidende sammenligning.
                           </p>
                         </div>
                         {activeMaterial.experiments && activeMaterial.experiments.length > 0 && (
@@ -1344,137 +2082,357 @@ export default function App() {
                           </button>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-6">
                           
-                          {/* Live Camera Feed or Captured Photo View */}
-                          <div className="flex flex-col gap-3">
-                            <div className="text-[10px] uppercase font-bold text-gray-500 block">Kamerasøker / Forhåndsvisning</div>
-                            
-                            {cameraStream ? (
-                              <div className="relative rounded-xl overflow-hidden bg-black aspect-video border border-[#eeede6] flex items-center justify-center">
-                                <video
-                                  ref={videoRef}
-                                  autoPlay
-                                  playsInline
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center bg-black/40 backdrop-blur-xs py-2 px-3 rounded-xl">
-                                  <span className="text-[10px] text-white font-semibold flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Kamera aktivt
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={handleCapturePhoto}
-                                    className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 flex items-center justify-center shadow-md transition-colors"
-                                    title="Ta bilde"
-                                  >
-                                    <Camera className="w-5 h-5" />
-                                  </button>
-                                </div>
+                          {/* 1. Referansebilde (Før-bilde) Administrasjonspanel */}
+                          <div className="bg-[#fcfcf9] p-4 rounded-2xl border border-[#eeede6] space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div>
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-[#1e293b] flex items-center gap-1.5">
+                                  <ImageIcon className="w-3.5 h-3.5 text-emerald-700" /> Referansebilde (Før-bilde / Ubehandlet prøvestykke)
+                                </span>
+                                <p className="text-[10px] text-gray-500 mt-0.5">
+                                  Last inn et baseline-foto av materialet før påkjenning for side-om-side sammenligning.
+                                </p>
                               </div>
-                            ) : capturedImage ? (
-                              <div className="relative rounded-xl overflow-hidden bg-[#f9f9f7] aspect-video border border-[#eeede6] flex items-center justify-center">
-                                <img
-                                  src={capturedImage}
-                                  alt="Captured result"
-                                  className="w-full h-full object-contain"
-                                />
-                                <div className="absolute top-2 right-2 bg-black/60 text-white py-1 px-2.5 rounded-lg text-[10px] font-bold">
-                                  Forhåndsvisning
+
+                              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                                <label className="bg-white hover:bg-stone-50 text-[#2c2c24] border border-[#dcdad0] py-1.5 px-3 rounded-xl text-[11px] font-bold cursor-pointer transition-all flex items-center gap-1.5 shadow-2xs">
+                                  <Upload className="w-3 h-3 text-emerald-800" />
+                                  <span>Last opp Før-bilde</span>
+                                  <input type="file" accept="image/*" onChange={handleReferenceImageUpload} className="hidden" />
+                                </label>
+
+                                {referenceImage && (
+                                  <button
+                                    onClick={() => setReferenceImage(null)}
+                                    className="text-[10px] text-red-600 hover:text-red-800 font-bold px-2 py-1 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                  >
+                                    Fjern referanse
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Preset Buttons */}
+                            <div className="flex items-center gap-2 pt-1 overflow-x-auto">
+                              <span className="text-[10px] font-bold uppercase text-gray-400 whitespace-nowrap">Standard referanser:</span>
+                              <button
+                                type="button"
+                                onClick={() => setReferenceImage('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80')}
+                                className="text-[10px] bg-white hover:bg-[#eeede6] text-gray-700 border border-[#e2e1d5] py-1 px-2.5 rounded-lg font-medium whitespace-nowrap transition-colors"
+                              >
+                                🌿 Ubehandlet Biomatrise
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setReferenceImage('https://images.unsplash.com/photo-1588854337221-4cf9fa96059c?w=800&auto=format&fit=crop&q=80')}
+                                className="text-[10px] bg-white hover:bg-[#eeede6] text-gray-700 border border-[#e2e1d5] py-1 px-2.5 rounded-lg font-medium whitespace-nowrap transition-colors"
+                              >
+                                🌾 Kysthalm (0 timer)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setReferenceImage('https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=800&auto=format&fit=crop&q=80')}
+                                className="text-[10px] bg-white hover:bg-[#eeede6] text-gray-700 border border-[#e2e1d5] py-1 px-2.5 rounded-lg font-medium whitespace-nowrap transition-colors"
+                              >
+                                🪵 Mycelium (Før test)
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2. Mode Switcher & Viewports */}
+                          <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#f0f4f8] p-2.5 rounded-xl border border-[#cbd5e1]">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-[#1e293b] flex items-center gap-1">
+                                  <Sliders className="w-3.5 h-3.5 text-[#2c5282]" /> Visningsmodus:
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#cbd5e1] shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setCompareViewMode('slider')}
+                                  className={`text-[10px] uppercase font-bold py-1 px-3 rounded-md transition-all flex items-center gap-1 ${
+                                    compareViewMode === 'slider'
+                                      ? 'bg-[#2c5282] text-white shadow-2xs'
+                                      : 'text-gray-600 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <Sliders className="w-3 h-3" />
+                                  <span>Glidende Sammenligning</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCompareViewMode('side-by-side')}
+                                  className={`text-[10px] uppercase font-bold py-1 px-3 rounded-md transition-all flex items-center gap-1 ${
+                                    compareViewMode === 'side-by-side'
+                                      ? 'bg-[#2c5282] text-white shadow-2xs'
+                                      : 'text-gray-600 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <Layers className="w-3 h-3" />
+                                  <span>Side-om-side Grid</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Viewports Rendering */}
+                            {compareViewMode === 'slider' ? (
+                              /* ================= GLIDENDE SPLIT SLIDER VIEW ================= */
+                              <div className="space-y-3">
+                                <div className="relative rounded-2xl overflow-hidden bg-[#1e293b] aspect-video border border-[#cbd5e1] select-none shadow-inner flex items-center justify-center">
+                                  
+                                  {/* BASE IMAGE: FØR (REFERANSE) */}
+                                  {referenceImage ? (
+                                    <img
+                                      src={referenceImage}
+                                      alt="Før (Referanse)"
+                                      className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 text-xs bg-stone-900">
+                                      <span>Ingen referansebilde innlastet</span>
+                                    </div>
+                                  )}
+
+                                  <div className="absolute top-3 left-3 bg-emerald-900/90 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md backdrop-blur-xs flex items-center gap-1 z-10">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                    <span>FØR (Referanse)</span>
+                                  </div>
+
+                                  {/* OVERLAY IMAGE: ETTER (TESTRESULTAT) */}
+                                  <div
+                                    className="absolute inset-0 overflow-hidden transition-none z-20"
+                                    style={{ clipPath: `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)` }}
+                                  >
+                                    {cameraStream ? (
+                                      <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : capturedImage ? (
+                                      <img
+                                        src={capturedImage}
+                                        alt="Etter (Testresultat)"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-stone-800/90 flex flex-col items-center justify-center text-center p-6 text-white">
+                                        <Camera className="w-8 h-8 text-blue-300 opacity-60 mb-2" />
+                                        <p className="text-xs text-gray-200">Start kamera eller last opp testbilde for live overlay</p>
+                                      </div>
+                                    )}
+
+                                    <div className="absolute top-3 right-3 bg-blue-900/90 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md backdrop-blur-xs flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                                      <span>ETTER (Testresultat)</span>
+                                    </div>
+                                  </div>
+
+                                  {/* VERTICAL DIVIDER & HANDLE */}
+                                  <div
+                                    className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_12px_rgba(0,0,0,0.6)] cursor-ew-resize z-30"
+                                    style={{ left: `${sliderPosition}%` }}
+                                  >
+                                    <div className="absolute top-1/2 -translate-y-1/2 -ml-3.5 w-8 h-8 rounded-full bg-white text-gray-900 text-xs font-bold shadow-lg flex items-center justify-center border-2 border-[#2c5282]">
+                                      ⇄
+                                    </div>
+                                  </div>
+
+                                </div>
+
+                                {/* Slider Control Bar */}
+                                <div className="bg-[#fcfcf9] p-3 rounded-xl border border-[#eeede6] space-y-1.5">
+                                  <div className="flex justify-between items-center text-[10px] font-bold text-gray-700">
+                                    <span className="text-emerald-700 flex items-center gap-1">
+                                      ← FØR: {100 - sliderPosition}% synlig
+                                    </span>
+                                    <span className="text-gray-500 font-mono">Dra glider for å avdekke tilstand</span>
+                                    <span className="text-blue-700 flex items-center gap-1">
+                                      ETTER: {sliderPosition}% synlig →
+                                    </span>
+                                  </div>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={sliderPosition}
+                                    onChange={(e) => setSliderPosition(Number(e.target.value))}
+                                    className="w-full accent-[#2c5282] cursor-pointer h-2 bg-gray-200 rounded-lg"
+                                  />
                                 </div>
                               </div>
                             ) : (
-                              <div className="border border-dashed border-[#e2e1d5] rounded-xl bg-[#fdfdfb] aspect-video flex flex-col items-center justify-center text-center p-6">
-                                <Camera className="w-10 h-10 text-[#5A5A40] opacity-50 mb-2" />
-                                <p className="text-xs text-gray-500 max-w-xs mb-4">Åpne enhetens kamera for å ta bilde av testresultatet eller fuktprøven.</p>
-                                <div className="flex gap-2 flex-wrap justify-center">
-                                  <button
-                                    onClick={handleStartCamera}
-                                    disabled={isCameraStarting}
-                                    className="bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2 px-4 rounded-xl text-xs uppercase tracking-wider font-bold transition-all flex items-center gap-1.5 shadow-xs"
-                                  >
-                                    {isCameraStarting ? (
-                                      <>
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        <span>Aktiverer...</span>
-                                      </>
+                              /* ================= SIDE-OM-SIDE GRID VIEW ================= */
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                
+                                {/* LEFT FRAME: FØR (REFERANSE) */}
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span> FØR (Referanseprøve)
+                                    </span>
+                                  </div>
+                                  <div className="relative rounded-xl overflow-hidden bg-stone-100 aspect-video border border-[#cbd5e1] flex items-center justify-center">
+                                    {referenceImage ? (
+                                      <img
+                                        src={referenceImage}
+                                        alt="Før (Referanse)"
+                                        className="w-full h-full object-cover"
+                                      />
                                     ) : (
-                                      <>
-                                        <Camera className="w-3.5 h-3.5" />
-                                        <span>Start Kamera</span>
-                                      </>
+                                      <div className="text-center p-4 text-xs text-gray-400">
+                                        Ingen referanse innlastet
+                                      </div>
                                     )}
-                                  </button>
-                                  <label className="bg-[#eeede6] text-[#2c2c24] border border-[#dcdad0] py-2 px-4 rounded-xl text-xs uppercase tracking-wider font-semibold hover:bg-[#e2e1d5] cursor-pointer transition-all flex items-center gap-1.5">
-                                    <Upload className="w-3.5 h-3.5" />
-                                    <span>Last opp fil</span>
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                                  </label>
+                                  </div>
                                 </div>
+
+                                {/* RIGHT FRAME: ETTER (TESTRESULTAT) */}
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-blue-500"></span> ETTER (Testresultat)
+                                    </span>
+                                  </div>
+                                  <div className="relative rounded-xl overflow-hidden bg-stone-100 aspect-video border border-[#cbd5e1] flex items-center justify-center">
+                                    {cameraStream ? (
+                                      <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : capturedImage ? (
+                                      <img
+                                        src={capturedImage}
+                                        alt="Etter (Testresultat)"
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="text-center p-4 text-xs text-gray-400">
+                                        Start kamera eller last opp bilde
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
                               </div>
                             )}
 
-                            {cameraError && (
-                              <p className="text-[11px] text-red-600 font-semibold">{cameraError}</p>
-                            )}
-
-                            {/* Camera Action Controls */}
-                            {(cameraStream || capturedImage) && (
-                              <div className="flex gap-2 justify-end">
-                                {cameraStream && (
-                                  <button
-                                    type="button"
-                                    onClick={handleStopCamera}
-                                    className="bg-[#eeede6] hover:bg-[#e2e1d5] text-[#2c2c24] border border-[#dcdad0] py-1.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
-                                  >
-                                    Deaktiver kamera
-                                  </button>
+                            {/* Camera Action Buttons */}
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                              <div className="flex gap-2 flex-wrap">
+                                {!cameraStream && !capturedImage && (
+                                  <>
+                                    <button
+                                      onClick={handleStartCamera}
+                                      disabled={isCameraStarting}
+                                      className="bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2 px-4 rounded-xl text-xs uppercase tracking-wider font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                    >
+                                      {isCameraStarting ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          <span>Aktiverer...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Camera className="w-3.5 h-3.5" />
+                                          <span>Start Kamera</span>
+                                        </>
+                                      )}
+                                    </button>
+                                    <label className="bg-[#eeede6] text-[#2c2c24] border border-[#dcdad0] py-2 px-4 rounded-xl text-xs uppercase tracking-wider font-semibold hover:bg-[#e2e1d5] cursor-pointer transition-all flex items-center gap-1.5 shadow-2xs">
+                                      <Upload className="w-3.5 h-3.5" />
+                                      <span>Last opp testbilde</span>
+                                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                    </label>
+                                  </>
                                 )}
+
+                                {cameraStream && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={handleCapturePhoto}
+                                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                    >
+                                      <Camera className="w-4 h-4" />
+                                      <span>Ta Bilde Nå</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleStopCamera}
+                                      className="bg-[#eeede6] hover:bg-[#e2e1d5] text-[#2c2c24] border border-[#dcdad0] py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                                    >
+                                      Deaktiver kamera
+                                    </button>
+                                  </>
+                                )}
+
                                 {capturedImage && (
                                   <button
                                     type="button"
                                     onClick={() => { setCapturedImage(null); handleStartCamera(); }}
-                                    className="bg-[#eeede6] hover:bg-[#e2e1d5] text-[#2c2c24] border border-[#dcdad0] py-1.5 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                                    className="bg-[#eeede6] hover:bg-[#e2e1d5] text-[#2c2c24] border border-[#dcdad0] py-2 px-4 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
                                   >
                                     Ta nytt bilde
                                   </button>
                                 )}
                               </div>
-                            )}
+
+                              {cameraError && (
+                                <p className="text-[11px] text-red-600 font-semibold">{cameraError}</p>
+                              )}
+                            </div>
                           </div>
 
-                          {/* Photo details & Log Submissions */}
-                          <div className="flex flex-col justify-between">
-                            <form onSubmit={handleSaveCapturedPhoto} className="space-y-4 flex-1 flex flex-col justify-between">
-                              <div className="space-y-4">
+                          {/* 3. Photo details & Log Submissions */}
+                          <div className="border-t border-[#f0f0e8] pt-5">
+                            <form onSubmit={handleSaveCapturedPhoto} className="space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                   <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Valgt eksperiment:</label>
-                                  <div className="p-3 bg-[#f9f9f7] rounded-xl border border-[#eeede6] text-xs font-semibold text-gray-800">
+                                  <div className="p-2.5 bg-[#f9f9f7] rounded-xl border border-[#eeede6] text-xs font-semibold text-gray-800">
                                     {activeMaterial.experiments.find(e => e.id === selectedExpIdForPhoto)?.title || 'Ingen valgt'}
                                   </div>
                                 </div>
 
                                 <div>
-                                  <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Beskrivelse / Loggkommentar *</label>
-                                  <textarea
-                                    required
-                                    rows={3}
-                                    placeholder="Beskriv hva bildet viser. F.eks. 'Visuell deformasjon observert på høyre flanke etter 24 timers trykktest', 'Muggsopp-kolonisering langs fuktkanal'."
-                                    value={photoDescription}
-                                    onChange={(e) => setPhotoDescription(e.target.value)}
-                                    className="w-full bg-[#fcfcf9] border border-[#dcdad0] rounded-xl py-2 px-3.5 text-xs focus:outline-none focus:border-[#5A5A40] text-[#2c2c24]"
-                                  ></textarea>
+                                  <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Sammenligningsstatus:</label>
+                                  <div className="p-2.5 bg-[#f0f4f8] rounded-xl border border-[#cbd5e1] text-xs font-bold text-[#1e293b] flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                                    <span>
+                                      {referenceImage ? 'Før-og-Etter Sammenligning klar' : 'Kun testbilde (Ingen referanse)'}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
 
-                              <div className="pt-4 border-t border-[#f0f0e8] mt-4">
+                              <div>
+                                <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Beskrivelse / Loggkommentar *</label>
+                                <textarea
+                                  required
+                                  rows={2}
+                                  placeholder="Beskriv observasjonen ved sammenligning. F.eks. 'Observert 15% fukt-svelging i overflaten sammenlignet med ubehandlet referanseprøve', 'Ingen fargeendring eller overflatesprekker etter 1000 sykluser'."
+                                  value={photoDescription}
+                                  onChange={(e) => setPhotoDescription(e.target.value)}
+                                  className="w-full bg-[#fcfcf9] border border-[#dcdad0] rounded-xl py-2 px-3.5 text-xs focus:outline-none focus:border-[#5A5A40] text-[#2c2c24]"
+                                ></textarea>
+                              </div>
+
+                              <div>
                                 <button
                                   type="submit"
                                   disabled={!capturedImage}
-                                  className="w-full bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2.5 px-5 rounded-xl text-xs uppercase tracking-widest font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-40"
+                                  className="w-full bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2.5 px-5 rounded-xl text-xs uppercase tracking-widest font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer shadow-xs"
                                 >
                                   <Check className="w-4 h-4" />
-                                  <span>Lagre bilde i eksperimentets logg</span>
+                                  <span>Lagre Før-og-Etter sammenligning i eksperiment-logg</span>
                                 </button>
                               </div>
                             </form>
@@ -1867,7 +2825,34 @@ export default function App() {
                 {/* ----------------- TAB: EXPERIMENTER & HYPOTESER ----------------- */}
                 {activeTab === 'eksperimenter' && (
                   <div className="space-y-6">
-                    
+                    {/* Top Export PDF Banner */}
+                    <div className="bg-[#f0f4f8] rounded-2xl p-5 border border-[#cbd5e1] flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#2c5282] text-white flex items-center justify-center shrink-0 shadow-xs">
+                          <Beaker className="w-5 h-5 text-blue-100" />
+                        </div>
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#1e293b]">
+                            Eksperimenter & Lab-logger for {activeMaterial.name}
+                          </h3>
+                          <p className="text-[11px] text-[#475569] mt-0.5">
+                            {activeMaterial.experiments?.length || 0} registrert(e) eksperiment(er) med tilknyttede målinger og loggoppføringer.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const owner = researchers.find(r => r.id === activeMaterial.ownerId);
+                          generateExperimentAndTestDataPDFReport(activeMaterial, owner);
+                        }}
+                        className="bg-[#2c5282] hover:bg-[#1a365d] text-white text-xs font-bold py-2 px-4 rounded-xl transition-all flex items-center gap-2 shadow-xs shrink-0 cursor-pointer"
+                        title="Eksporter alt til formatert PDF"
+                      >
+                        <FileText className="w-4 h-4 text-blue-200" />
+                        <span>Eksporter Test- & Eksperimentrapport (PDF)</span>
+                      </button>
+                    </div>
+
                     {/* Add Experiment Form */}
                     <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs">
                       <h3 className="text-xs font-bold uppercase tracking-widest text-[#5A5A40] mb-4 flex items-center gap-1.5">
@@ -2012,19 +2997,60 @@ export default function App() {
                                 {exp.logs.map((log, idx) => {
                                   const hasImage = log.includes('|||image:');
                                   if (hasImage) {
-                                    const [text, base64] = log.split('|||image:');
+                                    const [text, imagePart] = log.split('|||image:');
+                                    let testImg = imagePart;
+                                    let refImg: string | null = null;
+                                    if (imagePart.includes('|||ref:')) {
+                                      const parts = imagePart.split('|||ref:');
+                                      testImg = parts[0];
+                                      refImg = parts[1];
+                                    }
+
                                     return (
                                       <div key={idx} className="border-l-2 border-[#5A5A40]/40 pl-2 py-1.5 text-gray-700 space-y-1.5">
                                         <div>{text}</div>
-                                        <div 
-                                          className="relative group w-28 h-20 rounded-lg overflow-hidden border border-[#dcdad0] bg-gray-100 cursor-pointer shadow-xs hover:shadow-sm transition-all" 
-                                          onClick={() => setLightboxImage(base64)}
-                                        >
-                                          <img src={base64} alt="Loggvedlegg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
-                                          <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
-                                            <span className="text-[9px] text-white bg-black/50 px-1.5 py-0.5 rounded font-sans tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity">Zoom</span>
+
+                                        {refImg ? (
+                                          <div className="flex items-center gap-3 flex-wrap pt-1">
+                                            <div className="space-y-0.5">
+                                              <span className="text-[9px] font-bold uppercase text-emerald-700 font-sans block">Før (Referanse)</span>
+                                              <div 
+                                                className="relative group w-24 h-16 rounded-lg overflow-hidden border border-emerald-300 bg-gray-100 cursor-pointer shadow-2xs hover:shadow-xs transition-all" 
+                                                onClick={() => setLightboxImage(refImg!)}
+                                              >
+                                                <img src={refImg} alt="Referansebilde" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                                                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
+                                                  <span className="text-[8px] text-white bg-black/50 px-1 py-0.5 rounded font-sans uppercase">Før</span>
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            <span className="text-gray-400 font-bold text-xs">→</span>
+
+                                            <div className="space-y-0.5">
+                                              <span className="text-[9px] font-bold uppercase text-blue-700 font-sans block">Etter (Testresultat)</span>
+                                              <div 
+                                                className="relative group w-24 h-16 rounded-lg overflow-hidden border border-blue-300 bg-gray-100 cursor-pointer shadow-2xs hover:shadow-xs transition-all" 
+                                                onClick={() => setLightboxImage(testImg)}
+                                              >
+                                                <img src={testImg} alt="Testresultat" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                                                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
+                                                  <span className="text-[8px] text-white bg-black/50 px-1 py-0.5 rounded font-sans uppercase">Etter</span>
+                                                </div>
+                                              </div>
+                                            </div>
                                           </div>
-                                        </div>
+                                        ) : (
+                                          <div 
+                                            className="relative group w-28 h-20 rounded-lg overflow-hidden border border-[#dcdad0] bg-gray-100 cursor-pointer shadow-xs hover:shadow-sm transition-all" 
+                                            onClick={() => setLightboxImage(testImg)}
+                                          >
+                                            <img src={testImg} alt="Loggvedlegg" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                                            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
+                                              <span className="text-[9px] text-white bg-black/50 px-1.5 py-0.5 rounded font-sans tracking-wide uppercase opacity-0 group-hover:opacity-100 transition-opacity">Zoom</span>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   }
@@ -2099,6 +3125,392 @@ export default function App() {
                           </div>
                         ))
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ----------------- TAB: RESULTATANALYSE & YTELSESGRAFER ----------------- */}
+                {activeTab === 'analyse' && (
+                  <div className="space-y-6">
+                    {/* Header & General Info */}
+                    <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#eeede6] pb-4 mb-6">
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-widest text-[#5A5A40] flex items-center gap-1.5">
+                            <LineChart className="w-4 h-4 text-[#5A5A40]" /> Resultatanalyse & Ytelsesgrafer
+                          </h3>
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            Visualiser og sammenlign bio-materialets fysiske testdata, herdeprosesser, og EPD karbonregnskap.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-bold text-gray-400">Aktivt materiale:</span>
+                          <span className="text-xs font-bold text-gray-800 bg-[#f9f9f7] border border-[#dcdad0] py-1 px-3 rounded-lg">
+                            {activeMaterial?.name}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* KPI Dashboard Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-[#f9f9f7] rounded-xl p-4 border border-[#eeede6] text-center">
+                          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Maks Trykkfasthet</span>
+                          <span className="text-2xl font-serif font-bold text-[#5A5A40]">
+                            {activeMaterial?.testResults?.strengthMpa ? `${activeMaterial.testResults.strengthMpa} MPa` : 'N/A'}
+                          </span>
+                          <span className="text-[10px] text-gray-500 block mt-1">Sluttfasthet v/ 28 dager</span>
+                        </div>
+
+                        <div className="bg-[#f9f9f7] rounded-xl p-4 border border-[#eeede6] text-center">
+                          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Drivhuspotensial (GWP)</span>
+                          <span className={`text-2xl font-serif font-bold ${activeMaterial?.epd?.gwp !== undefined && activeMaterial.epd.gwp < 0 ? 'text-emerald-700' : 'text-amber-800'}`}>
+                            {activeMaterial?.epd?.gwp !== undefined ? `${activeMaterial.epd.gwp} kg` : 'N/A'}
+                          </span>
+                          <span className="text-[10px] text-gray-500 block mt-1">CO₂ eq / kg materiale</span>
+                        </div>
+
+                        <div className="bg-[#f9f9f7] rounded-xl p-4 border border-[#eeede6] text-center">
+                          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Sirkulær Andel</span>
+                          <span className="text-2xl font-serif font-bold text-[#5A5A40]">
+                            {activeMaterial?.epd?.recycledContent ? `${activeMaterial.epd.recycledContent}%` : 'N/A'}
+                          </span>
+                          <span className="text-[10px] text-gray-500 block mt-1">Gjenvunnet innhold</span>
+                        </div>
+
+                        <div className="bg-[#f9f9f7] rounded-xl p-4 border border-[#eeede6] text-center">
+                          <span className="text-[9px] uppercase tracking-wider text-gray-400 font-bold block mb-1">Designlevetid</span>
+                          <span className="text-2xl font-serif font-bold text-[#5A5A40]">
+                            {activeMaterial?.epd?.lifetime ? `${activeMaterial.epd.lifetime} år` : 'N/A'}
+                          </span>
+                          <span className="text-[10px] text-gray-500 block mt-1">Forventet brukstid i bygg</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Chart & Interaction Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left side: Visualizations */}
+                      <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs flex flex-col justify-between">
+                        <div>
+                          {/* Inner Tabs for chart switching */}
+                          <div className="flex border-b border-[#eeede6] pb-3 mb-5 gap-4 overflow-x-auto">
+                            <button
+                              onClick={() => setSelectedAnalyseMetric('styrke')}
+                              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
+                                selectedAnalyseMetric === 'styrke'
+                                  ? 'bg-[#5A5A40] text-white font-bold'
+                                  : 'text-gray-500 hover:bg-stone-100'
+                              }`}
+                            >
+                              Styrkeutvikling (MPa)
+                            </button>
+                            <button
+                              onClick={() => setSelectedAnalyseMetric('fuktighet')}
+                              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
+                                selectedAnalyseMetric === 'fuktighet'
+                                  ? 'bg-[#5A5A40] text-white font-bold'
+                                  : 'text-gray-500 hover:bg-stone-100'
+                              }`}
+                            >
+                              Fuktabsorpsjon (%)
+                            </button>
+                            <button
+                              onClick={() => setSelectedAnalyseMetric('gwp')}
+                              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
+                                selectedAnalyseMetric === 'gwp'
+                                  ? 'bg-[#5A5A40] text-white font-bold'
+                                  : 'text-gray-500 hover:bg-stone-100'
+                              }`}
+                            >
+                              Karbonregnskap (GWP Benchmark)
+                            </button>
+                          </div>
+
+                          {/* Chart Container */}
+                          <div className="h-80 w-full mt-2">
+                            {selectedAnalyseMetric === 'styrke' && (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                  data={getStrengthData()}
+                                  margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+                                >
+                                  <defs>
+                                    <linearGradient id="colorStrength" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#5A5A40" stopOpacity={0.4}/>
+                                      <stop offset="95%" stopColor="#5A5A40" stopOpacity={0.0}/>
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" />
+                                  <XAxis 
+                                    dataKey="day" 
+                                    tick={{ fontSize: 10, fill: '#666' }} 
+                                    label={{ value: 'Dager', position: 'insideBottom', offset: -5, fontSize: 10, fill: '#666' }} 
+                                  />
+                                  <YAxis 
+                                    tick={{ fontSize: 10, fill: '#666' }} 
+                                    label={{ value: 'Styrke (MPa)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
+                                  />
+                                  <RecTooltip 
+                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
+                                    formatter={(value: any, name: any, props: any) => [`${value} MPa`, `Type: ${props.payload.type}`]}
+                                    labelFormatter={(label) => `Dag ${label}`}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
+                                  <Area 
+                                    name="Mekanisk fasthet" 
+                                    type="monotone" 
+                                    dataKey="verdi" 
+                                    stroke="#5A5A40" 
+                                    strokeWidth={2}
+                                    fillOpacity={1} 
+                                    fill="url(#colorStrength)" 
+                                  />
+                                </AreaChart>
+                              </ResponsiveContainer>
+                            )}
+
+                            {selectedAnalyseMetric === 'fuktighet' && (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RecLineChart
+                                  data={getMoistureData()}
+                                  margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" />
+                                  <XAxis 
+                                    dataKey="rh" 
+                                    tick={{ fontSize: 10, fill: '#666' }} 
+                                    label={{ value: 'Relativ Luftfuktighet (RH %)', position: 'insideBottom', offset: -5, fontSize: 10, fill: '#666' }} 
+                                  />
+                                  <YAxis 
+                                    tick={{ fontSize: 10, fill: '#666' }} 
+                                    label={{ value: 'Vannabsorpsjon (% vekt)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
+                                  />
+                                  <RecTooltip 
+                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
+                                    formatter={(value: any, name: any, props: any) => [`${value}%`, `Type: ${props.payload.type}`]}
+                                    labelFormatter={(label) => `RH: ${label}%`}
+                                  />
+                                  <Legend wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
+                                  <Line 
+                                    name="Fuktighetsopptak" 
+                                    type="monotone" 
+                                    dataKey="verdi" 
+                                    stroke="#3b82f6" 
+                                    strokeWidth={2.5}
+                                    activeDot={{ r: 6 }} 
+                                  />
+                                </RecLineChart>
+                              </ResponsiveContainer>
+                            )}
+
+                            {selectedAnalyseMetric === 'gwp' && (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RecBarChart
+                                  data={getGwpBenchmarkData()}
+                                  margin={{ top: 15, right: 10, left: -10, bottom: 20 }}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" vertical={false} />
+                                  <XAxis 
+                                    dataKey="name" 
+                                    tick={{ fontSize: 9, fill: '#666' }} 
+                                    interval={0}
+                                    angle={-15}
+                                    textAnchor="end"
+                                  />
+                                  <YAxis 
+                                    tick={{ fontSize: 10, fill: '#666' }} 
+                                    label={{ value: 'kg CO₂ eq/kg', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
+                                  />
+                                  <RecTooltip 
+                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
+                                    formatter={(value: any) => [`${value} kg CO₂ eq/kg`, 'Karbonintensitet']}
+                                  />
+                                  <Bar 
+                                    dataKey="gwp" 
+                                    name="Drivhuspotensial (GWP)"
+                                    radius={[4, 4, 0, 0]}
+                                  >
+                                    {getGwpBenchmarkData().map((entry, index) => {
+                                      let fill = '#a8a29e'; // Default gray for reference
+                                      if (entry.isCurrent) {
+                                        fill = '#5A5A40'; // Deep signature color for current material
+                                      } else if (entry.gwp < 0) {
+                                        fill = '#10b981'; // Bright green for carbon-negative
+                                      } else if (entry.gwp > 100) {
+                                        fill = '#ef4444'; // Red for heavy GWP
+                                      } else if (entry.gwp > 0) {
+                                        fill = '#f59e0b'; // Amber for standard positive GWP
+                                      }
+                                      return <Cell key={`cell-${index}`} fill={fill} />;
+                                    })}
+                                  </Bar>
+                                </RecBarChart>
+                              </ResponsiveContainer>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Chart Legend Explanation */}
+                        <div className="mt-4 p-3 bg-[#fcfcf9] rounded-xl border border-[#eeede6] text-[11px] text-gray-500">
+                          {selectedAnalyseMetric === 'styrke' && (
+                            <p><strong>Note:</strong> Kurven viser en interpolert referanseutvikling fram til materialets sluttfasthet etter 28 dager herding. Eventuelle manuelle labmålinger du legger inn under vil integreres direkte som faktiske plot-punkter på tidslinjen.</p>
+                          )}
+                          {selectedAnalyseMetric === 'fuktighet' && (
+                            <p><strong>Note:</strong> Viser hygroskopisk balanse og evnen til å absorbere fuktighet under varierende relativ luftfuktighet (RH). Bio-materialer fungerer ofte som effektive fukt-buffere i innendørs konstruksjoner.</p>
+                          )}
+                          {selectedAnalyseMetric === 'gwp' && (
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                              <span><strong>Fargeforklaring:</strong></span>
+                              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#5A5A40] rounded"></span> Aktivt Materiale</span>
+                              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#10b981] rounded"></span> Karbonnegativ (Nettobinder CO₂)</span>
+                              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#f59e0b] rounded"></span> Lavt CO₂ avtrykk</span>
+                              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#ef4444] rounded"></span> Høyt CO₂ avtrykk (Sement-ref)</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right side: Input & registered log data */}
+                      <div className="space-y-6">
+                        
+                        {/* New Lab Measurement Input Form */}
+                        <div className="bg-white rounded-2xl p-5 border border-[#e2e1d5] shadow-xs">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A5A40] border-b border-[#eeede6] pb-2.5 mb-4 flex items-center gap-1.5">
+                            <PlusCircle className="w-4 h-4" /> Registrer lab-måling
+                          </h4>
+                          
+                          <form onSubmit={handleSaveMeasurement} className="space-y-3.5">
+                            <div>
+                              <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Måleparameter</label>
+                              <select
+                                value={newMeasParam}
+                                onChange={(e) => {
+                                  const val = e.target.value as any;
+                                  setNewMeasParam(val);
+                                  // Auto-fill a sensible label/value helper
+                                  if (val === 'strength') {
+                                    setNewMeasLabel('Dag 14 (Trykktest)');
+                                  } else if (val === 'moisture') {
+                                    setNewMeasLabel('75% RH eksponering');
+                                  } else {
+                                    setNewMeasLabel('EPD revidert GWP');
+                                  }
+                                }}
+                                className="w-full bg-[#fcfcf9] border border-[#dcdad0] rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-[#5A5A40] font-medium"
+                              >
+                                <option value="strength">Styrke / Fasthet (MPa)</option>
+                                <option value="moisture">Fuktighetsabsorpsjon (% vekt)</option>
+                                <option value="gwp">EPD Karbonavtrykk (kg CO₂ eq/kg)</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Måleverdi (Tall)</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  step="0.001"
+                                  required
+                                  placeholder={newMeasParam === 'strength' ? 'F.eks. 0.65' : newMeasParam === 'moisture' ? 'F.eks. 11.2' : 'F.eks. -1.45'}
+                                  value={newMeasValue}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setNewMeasValue(val === '' ? '' : Number(val));
+                                  }}
+                                  className="w-full bg-[#fcfcf9] border border-[#dcdad0] rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-[#5A5A40]"
+                                />
+                                <span className="absolute right-3 top-1.5 text-[10px] font-bold text-gray-400">
+                                  {newMeasParam === 'strength' ? 'MPa' : newMeasParam === 'moisture' ? '%' : 'kg CO₂ eq/kg'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">
+                                {newMeasParam === 'strength' ? 'Dag eller Testpunkt (f.eks. "Dag 14")' : newMeasParam === 'moisture' ? 'RH % eller Testpunkt (f.eks. "75% RH")' : 'Revisjonsetikett (f.eks. "Batch B")'}
+                              </label>
+                              <input
+                                type="text"
+                                required
+                                placeholder={newMeasParam === 'strength' ? 'Skriv f.eks. "Dag 14"' : newMeasParam === 'moisture' ? 'Skriv f.eks. "75% RH"' : 'Skriv f.eks. "Batch B"'}
+                                value={newMeasLabel}
+                                onChange={(e) => setNewMeasLabel(e.target.value)}
+                                className="w-full bg-[#fcfcf9] border border-[#dcdad0] rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-[#5A5A40]"
+                              />
+                            </div>
+
+                            {activeMaterial?.experiments && activeMaterial.experiments.length > 0 && (
+                              <div>
+                                <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Tilknytt laboratorieforsøk (valgfritt)</label>
+                                <select
+                                  value={newMeasExpId}
+                                  onChange={(e) => setNewMeasExpId(e.target.value)}
+                                  className="w-full bg-[#fcfcf9] border border-[#dcdad0] rounded-xl py-1.5 px-3 text-xs focus:outline-none focus:border-[#5A5A40] font-medium text-gray-700"
+                                >
+                                  <option value="">Ingen (Generell laboratorietest)</option>
+                                  {activeMaterial.experiments.map(exp => (
+                                    <option key={exp.id} value={exp.id}>
+                                      {exp.title}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+
+                            <button
+                              type="submit"
+                              className="w-full bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2 rounded-xl text-[11px] uppercase tracking-wider font-bold transition-colors shadow-xs"
+                            >
+                              Lagre i laboratorie-databasen
+                            </button>
+                          </form>
+                        </div>
+
+                        {/* List of custom registered measurements */}
+                        <div className="bg-white rounded-2xl p-5 border border-[#e2e1d5] shadow-xs">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A5A40] border-b border-[#eeede6] pb-2.5 mb-3">
+                            Registrerte Lab-målinger ({activeMaterial?.measurements?.length || 0})
+                          </h4>
+
+                          {!activeMaterial?.measurements || activeMaterial.measurements.length === 0 ? (
+                            <p className="text-[10px] text-gray-400 italic text-center py-4">
+                              Ingen egendefinerte målinger registrert for dette materialet ennå. Bruk skjemaet over til å plotte nye testpunkter.
+                            </p>
+                          ) : (
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                              {activeMaterial.measurements.map((meas) => (
+                                <div key={meas.id} className="p-2.5 bg-[#f9f9f7] rounded-xl border border-[#eeede6] text-[11px] flex justify-between items-center hover:border-gray-300 transition-colors">
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`w-1.5 h-1.5 rounded-full ${
+                                        meas.parameter === 'strength' ? 'bg-[#5A5A40]' :
+                                        meas.parameter === 'moisture' ? 'bg-blue-500' : 'bg-emerald-600'
+                                      }`}></span>
+                                      <span className="font-bold text-gray-800">
+                                        {meas.value} {meas.parameter === 'strength' ? 'MPa' : meas.parameter === 'moisture' ? '%' : 'kg CO₂ eq/kg'}
+                                      </span>
+                                      <span className="text-gray-400">({meas.label})</span>
+                                    </div>
+                                    <div className="text-[9px] text-gray-400">
+                                      {meas.experimentTitle ? `Tilknyttet: ${meas.experimentTitle}` : 'Generell test'} • {meas.timestamp}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteMeasurement(meas.id)}
+                                    className="text-gray-400 hover:text-red-600 p-1"
+                                    title="Slett måling"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
                     </div>
                   </div>
                 )}
@@ -2204,6 +3616,41 @@ export default function App() {
         )}
 
       </div>
+      )}
+
+      {/* ================= UNREAL ENGINE & METAHUMAN BRIDGE WORKSPACE ================= */}
+      {globalView === 'unreal' && (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col justify-start">
+          <UnrealBridge
+            unrealConfig={unrealConfig}
+            setUnrealConfig={setUnrealConfig}
+            evaChatMessages={evaChatMessages}
+            evaInputText={evaInputText}
+            setEvaInputText={setEvaInputText}
+            evaIsThinking={evaIsThinking}
+            unrealLogs={unrealLogs}
+            handleSendEvaMessage={handleSendEvaMessage}
+          />
+        </div>
+      )}
+
+      {/* ================= AI RESEARCH OWNER PREDICTIVE WORKSPACE ================= */}
+      {globalView === 'eierallokering' && (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col justify-start">
+          <EierallokeringView
+            materials={materials}
+            researchers={researchers}
+            selectedMaterialIdForPredictiveAI={selectedMaterialIdForPredictiveAI}
+            setSelectedMaterialIdForPredictiveAI={setSelectedMaterialIdForPredictiveAI}
+            predictionLoading={predictionLoading}
+            predictionError={predictionError}
+            predictedAllocation={predictedAllocation}
+            handlePredictOwner={handlePredictOwner}
+            handleApproveOwner={handleApproveOwner}
+          />
+        </div>
+      )}
+
 
       {/* ================= FOOTER STATUS BAR ================= */}
       <footer id="app-footer" className="bg-[#2c2c24] text-[#bcbc9f] py-4 px-4 md:px-8 text-[10px] uppercase tracking-[0.2em] font-mono mt-auto border-t border-[#1c1c14] flex flex-col sm:flex-row justify-between items-center gap-2">
@@ -2349,6 +3796,66 @@ export default function App() {
                   className="w-full bg-white border border-[#dcdad0] rounded-xl py-2 px-3.5 text-xs focus:outline-none"
                 ></textarea>
               </div>
+
+              {/* AI Category Suggestion when 'Annet' is selected */}
+              {manualCategory === 'Annet' && (
+                <div className="bg-amber-50/90 border border-amber-300/80 rounded-2xl p-3.5 space-y-2.5 text-xs text-amber-950 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold flex items-center gap-1.5 text-amber-900 text-xs">
+                      <Sparkles className="w-4 h-4 text-amber-600" /> Du har valgt kategorien 'Annet'
+                    </span>
+                    <button
+                      type="button"
+                      id="btn-suggest-category"
+                      onClick={() => handleSuggestCategory(manualName, manualDescription)}
+                      disabled={categorySuggestLoading || (!manualName.trim() && !manualDescription.trim())}
+                      className="bg-[#5A5A40] hover:bg-[#4a4a34] text-white font-bold py-1.5 px-3 rounded-xl text-[11px] transition-all disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      {categorySuggestLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyserer beskrivelse...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Foreslå kategori basert på beskrivelse
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {(!manualName.trim() && !manualDescription.trim()) && (
+                    <p className="text-[11px] text-amber-800/80 italic">
+                      Skriv inn materialnavn og/eller en kort beskrivelse for å få et spesifikt kategoriforslag.
+                    </p>
+                  )}
+
+                  {suggestedCategoryResult && (
+                    <div className="bg-white border border-amber-200/90 rounded-xl p-3 space-y-2 text-[11px] shadow-2xs">
+                      <div className="flex items-center justify-between font-bold text-gray-900">
+                        <span className="text-amber-950 flex items-center gap-1.5 text-xs">
+                          Foreslått kategori: <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold">{suggestedCategoryResult.suggestedCategory}</span>
+                        </span>
+                        <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/80 font-bold">
+                          {suggestedCategoryResult.confidence}% sikkerhet
+                        </span>
+                      </div>
+                      <p className="text-gray-600 text-[11px] leading-relaxed">
+                        {suggestedCategoryResult.reasoning}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualCategory(suggestedCategoryResult.suggestedCategory);
+                          setSuggestedCategoryResult(null);
+                        }}
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white py-1.5 px-3 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5 mt-1 cursor-pointer shadow-xs"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-200" /> Velg '{suggestedCategoryResult.suggestedCategory}' som kategori
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

@@ -227,7 +227,71 @@ Vennligst utform et vitenskapelig herdetest/laboratorie-eksperiment på NORSK i 
   }
 });
 
+// 2b. Predict Research Owner via AI
+app.post('/api/gemini/predict-owner', async (req, res) => {
+  try {
+    const { material, researchers } = req.body;
+    if (!material || !researchers || !Array.isArray(researchers)) {
+      return res.status(400).json({ error: 'Material profile and researchers list are required.' });
+    }
+
+    const ai = getAiClient();
+    const prompt = `Du er en avansert prediktiv AI-allokeringsmotor for bio-arkitektur og regenerativt bygningsdesign ved BioBuild Norge.
+Din oppgave er å analysere det nye bio-materialet og velge den optimale forskningslederen (Forsknings-eier) basert på deres kompetansefelt, suksessrate og arbeidsbelastning.
+
+Her er materialet som skal allokeres:
+- Navn: "${material.name}"
+- Kategori: "${material.category}"
+- Beskrivelse: "${material.description}"
+- GWP (Karbonavtrykk): ${material.epd?.gwp} kg CO2 eq/kg
+- Trykkfasthet: ${material.testResults?.strengthMpa || 'N/A'} MPa
+- Biologisk sammensetning: "${material.biologicalComposition}"
+
+Her er de tilgjengelige forskerne i databasen:
+${researchers.map(r => `- ID: "${r.id}", Navn: "${r.name}", Tittel: "${r.title}", Avdeling: "${r.department}", Kompetanse: [${r.expertise.join(', ')}], Arbeidstimer: ${r.activeHours}t, Suksessrate: ${r.successRate}%`).join('\n')}
+
+Gjør en vitenskapelig analyse på NORSK. Velg én optimal eier (må matche en eksisterende ID).
+Returner resultatet i JSON-format med følgende nøyaktige felter:
+- ownerId: ID-en til den valgte forskeren (f.eks. "res-1")
+- confidence: Et heltall mellom 0 og 100 som representerer match-konfidens
+- reasoning: En detaljert, faglig begrunnelse på norsk (2-3 setninger) for hvorfor akkurat denne forskeren ble valgt basert på materialets biologiske/fysiske egenskaper og forskerens ekspertise.
+- workloadFactor: En kort vurdering på norsk av forskerens nåværende arbeidsmengde (${researchers.find(r => r.id === 'res-1')?.activeHours || 140}t, osv) og kapasitet til å påta seg dette prosjektet.
+- successProbability: Et heltall mellom 0 og 100 som anslår sannsynligheten for at forskningen lykkes under denne eieren.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          required: ['ownerId', 'confidence', 'reasoning', 'workloadFactor', 'successProbability'],
+          properties: {
+            ownerId: { type: Type.STRING },
+            confidence: { type: Type.INTEGER },
+            reasoning: { type: Type.STRING },
+            workloadFactor: { type: Type.STRING },
+            successProbability: { type: Type.INTEGER }
+          }
+        }
+      }
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error('Gemini returned an empty response.');
+    }
+
+    res.json(JSON.parse(resultText.trim()));
+  } catch (error: any) {
+    console.error('Error predicting research owner:', error);
+    // Return a smart fallback selection locally in case API fails
+    res.status(500).json({ error: error.message || 'Kunne ikke gjennomføre prediktiv AI-analyse.' });
+  }
+});
+
 // 3. General BioBuild Chat Partner
+
 app.post('/api/gemini/chat', async (req, res) => {
   try {
     const { messages, contextMaterial } = req.body;
@@ -277,6 +341,50 @@ Her er noen nøkkeldata om materialet for din kontekst:
   } catch (error: any) {
     console.error('Error in lab chat:', error);
     res.status(500).json({ error: error.message || 'Feil ved tilkobling til Gemini API.' });
+  }
+});
+
+// 4. Suggest Material Category from Description
+app.post('/api/gemini/suggest-category', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!description && !name) {
+      return res.status(400).json({ error: 'Navn eller beskrivelse er påkrevd.' });
+    }
+
+    const ai = getAiClient();
+    const prompt = `Du er en ekspert på bio-baserte bygningsmaterialer og organisk kjemi.
+Basert på navnet og beskrivelsen nedenfor, analyser materialet og foreslå den nøyaktig mest passendekategorien blant disse 4 standardkategoriene:
+- "Mykologiske" (for sopp, mycelium, kitin, ganoderma, pleurotus, sporer osv.)
+- "Plantebaserte" (for hamp, lin, strå, halm, jute, bambus, cellulose, frø, biomasse osv.)
+- "Alger & Bakterier" (for alger, bakterier, alginat, mikroalger, bio-sement, cyanobakterier, kalkutfelling, diatomeer osv.)
+- "Tre & Kork" (for treverk, massivtre, kork, bark, flis, lignin, trefiber osv.)
+
+Materialnavn: "${name || ''}"
+Beskrivelse: "${description || ''}"
+
+Returner et JSON-objekt med:
+- suggestedCategory: streng (MÅ være nøyaktig en av: "Mykologiske", "Plantebaserte", "Alger & Bakterier", "Tre & Kork")
+- reasoning: kort faglig begrunnelse på norsk (1-2 setninger)
+- confidence: et heltall fra 70 til 99`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+      }
+    });
+
+    const jsonText = response.text;
+    if (!jsonText) {
+      throw new Error('Tomt svar fra Gemini');
+    }
+
+    res.json(JSON.parse(jsonText.trim()));
+  } catch (error: any) {
+    console.error('Error suggesting category:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke foreslå kategori.' });
   }
 });
 
