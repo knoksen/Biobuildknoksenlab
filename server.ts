@@ -80,7 +80,7 @@ Følgende felter må fylles ut i JSON:
 - hypotheses: En liste med 1-2 innledende hypoteser/forsøk (objekter med "title", "hypothesis", "independentVariable", "dependentVariable", "status" ('Utkast')).`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.6-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -173,6 +173,136 @@ Følgende felter må fylles ut i JSON:
   }
 });
 
+// Helper for fetching image URL and converting to base64
+async function urlToBase64(url: string): Promise<{ mimeType: string; data: string } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    return {
+      mimeType: contentType,
+      data: buffer.toString('base64'),
+    };
+  } catch (e) {
+    console.error('Failed to convert image URL to base64:', e);
+    return null;
+  }
+}
+
+// 1b. Visuell Gemini Analyse av Materialintegritet
+app.post('/api/gemini/analyze-image', async (req, res) => {
+  try {
+    const { capturedImage, referenceImage, materialName, model } = req.body;
+    if (!capturedImage) {
+      return res.status(400).json({ error: 'Fangede testbilde er påkrevd.' });
+    }
+
+    const selectedModel = model || 'gemini-3.6-flash';
+    const ai = getAiClient();
+
+    // Parse capturedImage base64
+    let capturedMime = 'image/jpeg';
+    let capturedBase64 = capturedImage;
+    if (capturedImage.startsWith('data:')) {
+      const matches = capturedImage.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+      if (matches) {
+        capturedMime = matches[1];
+        capturedBase64 = matches[2];
+      }
+    }
+
+    const parts: any[] = [];
+
+    // Add captured test image part
+    parts.push({
+      inlineData: {
+        mimeType: capturedMime,
+        data: capturedBase64,
+      },
+    });
+
+    // Add reference image if present
+    if (referenceImage) {
+      if (referenceImage.startsWith('http://') || referenceImage.startsWith('https://')) {
+        const fetched = await urlToBase64(referenceImage);
+        if (fetched) {
+          parts.push({
+            inlineData: {
+              mimeType: fetched.mimeType,
+              data: fetched.data,
+            },
+          });
+        }
+      } else if (referenceImage.startsWith('data:')) {
+        const matches = referenceImage.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+        if (matches) {
+          parts.push({
+            inlineData: {
+              mimeType: matches[1],
+              data: matches[2],
+            },
+          });
+        }
+      }
+    }
+
+    const promptText = `Du er en ledende laboratorie-spesialist på mikroskopi, materialfasthet og strukturell feilanalyse for bio-baserte bygningsmaterialer ved BioBuild Norge.
+
+Du har mottatt bilde(r) av testresultat for materialet "${materialName || 'Bio-materiale'}".
+${referenceImage ? 'Du har både et referansebilde (Før-tilstand) og et nytt testbilde (Etter-påkjenning).' : 'Du har mottatt et nytt testbilde av prøvestykket.'}
+
+Vennligst gjennomfør en grundig visuell analyse av materialets integritet og oppdag eventuelle mikrosprekker, fuktmerker, delaminering, fargeendring eller biologisk nedbrytning.
+
+Returner svaret på NORSK i strikt JSON-format med følgende felter:
+- integrityScore: Et heltall fra 0 til 100, der 100 betyr perfekt uskadet integritet og 0 betyr total strukturell kollaps.
+- overallCondition: En kort statusoverskrift (f.eks. "God integritet", "Middels fuktgjennomtrengning", "Kritisk mikrosprekkdannelse", "Begynnende overflatedelaminering").
+- defectsDetected: En liste med 1-4 spesifikke observasjoner/defekter (f.eks. ["Mikrosprekker i kantsonen", "Lokal fukt-misfarging", "Ingen overflate-erosjon"]).
+- detailedAnalysis: En faglig beskrivelse (2-3 setninger) av den visuelle tilstanden, strukturelle sammenhenger og materialets respons.
+- recommendations: En liste med 2-3 konkrete tiltak for forskerteamet (f.eks. "Sjekk fuktinnhold med hydro-probe", "Gjennomfør ny trykktest ved 50 kN", "Effektiviser hydrofob overflatebehandling").`;
+
+    parts.push({ text: promptText });
+
+    const response = await ai.models.generateContent({
+      model: selectedModel,
+      contents: { parts },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          required: ['integrityScore', 'overallCondition', 'defectsDetected', 'detailedAnalysis', 'recommendations'],
+          properties: {
+            integrityScore: { type: Type.INTEGER },
+            overallCondition: { type: Type.STRING },
+            defectsDetected: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+            detailedAnalysis: { type: Type.STRING },
+            recommendations: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+            },
+          },
+        },
+      },
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error('Gemini returnerte et tomt svar.');
+    }
+
+    const analysisData = JSON.parse(resultText.trim());
+    analysisData.usedModel = selectedModel;
+    res.json(analysisData);
+  } catch (error: any) {
+    console.error('Error analyzing test image with Gemini:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke gjennomføre visuell AI-analyse av bildet.' });
+  }
+});
+
 // 2. Generate Experiment Hypothesis based on Open Question
 app.post('/api/gemini/generate-experiment', async (req, res) => {
   try {
@@ -194,7 +324,7 @@ Vennligst utform et vitenskapelig herdetest/laboratorie-eksperiment på NORSK i 
 - stepByStepPlan: En liste over 3-5 logiske steg for gjennomføring av forsøket.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.6-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -259,7 +389,7 @@ Returner resultatet i JSON-format med følgende nøyaktige felter:
 - successProbability: Et heltall mellom 0 og 100 som anslår sannsynligheten for at forskningen lykkes under denne eieren.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.6-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -329,7 +459,7 @@ Her er noen nøkkeldata om materialet for din kontekst:
     formattedConversation += `BioBuild AI-Lab-Partner:`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.6-flash',
       contents: formattedConversation,
       config: {
         systemInstruction,
@@ -369,7 +499,7 @@ Returner et JSON-objekt med:
 - confidence: et heltall fra 70 til 99`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-3.6-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'

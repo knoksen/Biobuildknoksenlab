@@ -691,6 +691,203 @@ export const initialBioMaterials: BioMaterial[] = [
     measurements: [
       { id: 'm-11-1', timestamp: '2026-03-16', parameter: 'strength', value: 28.1, label: 'Fuge-trykkfasthet (MPa)', experimentTitle: 'Urea-erstatning test' }
     ]
+  },
+  {
+    id: 'mat-12',
+    name: 'Sukkertare & Alginat Akustikkpaneler (Saccharina Latissima)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-9',
+    description: 'Miljøvennlige, lydabsorberende dekorpaneler fremstilt av tørket sukkertare (Saccharina latissima) og bio-kryssoverlenket alginathydrogel. Gir spennende organisk tekstur og dokumentert støydemping i moderne kontor- og undervisningsbygg.',
+    chemicalComposition: 'Natriumalginat, kalsiumklorid kryssoverlenker, fykokolloider, mannitol, naturlig jod og mineraler.',
+    biologicalComposition: '75% tørket og varmebehandlet sukkertare fra trøndelagskysten og 25% bio-nedbrytbart alginatbindemiddel.',
+    trl: 7,
+    applicationAreas: ['Akustisk veggkledning', 'Lyddempende himlinger', 'Designmoduler i auditorium', 'Møteromspaneler'],
+    suppliers: ['Seaweed Solutions AS', 'SINTEF Ocean', 'BioBuild Norge AS'],
+    epd: {
+      gwp: -1.3,
+      recycledContent: 96,
+      lifetime: 40,
+      circularity: '100% komposterbar i organisk hagekompost.'
+    },
+    testResults: {
+      fire: 'Inneholder naturlig høyt salt- og jodinnhold som gir selvslukkende egenskaper og forhindrer flammepredning.',
+      moisture: 'Opprettholder sin akustiske dempingseffekt opp til 85% relativ fuktighet.',
+      strength: 'Lydabsorpsjonskoeffisient αw = 0.85 (Klasse B akustikk). Bøyefasthet 4.2 MPa.',
+      durability: 'Uforandret akustisk ytelse etter 10 års test i normalt inneklima.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 4.2,
+      durabilityYears: 40
+    },
+    healthRisk: 'Null flyktige organiske forbindelser (VOC). Luktnøytralisert og overflatebehandlet med linolje.',
+    articles: [
+      {
+        id: 'art-12-1',
+        title: 'Macroalgae-based acoustic panels for sustainable indoor noise attenuation',
+        authors: 'Vanebo, S. & Rostova, E.',
+        year: 2025,
+        journal: 'Applied Acoustics',
+        summary: 'Eksperimentell måling av lydreduksjonsindeks for sukkertarepaneler i klangrom.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-12-1',
+        question: 'Hvordan påvirker variasjoner i tarehøstings-sesongen panelets farge- og lydabsorpsjonsegenskaper?',
+        importance: 'Medium',
+        status: 'Åpen'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-12-1',
+        title: 'Klangromstest av sukkertarepaneler med ulik overflatestruktur',
+        hypothesis: 'Bølget overflate-tekstur vil øke lydabsorpsjonen i lavfrekvensområdet (125-250 Hz) med 25%.',
+        independentVariable: 'Overflate-geometri (Glatt, Riflet, Bølget)',
+        dependentVariable: 'Lydabsorpsjonskoeffisient (αw) i impedansrør',
+        status: 'Aktiv',
+        startDate: '2026-06-01',
+        logs: [
+          '01.06.2026: Støpte 12 akustikkplater med ulike overflatestrukturer.',
+          '15.06.2026: Gjennomførte akustisk måling i impedansrøret på NTNU.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-12-1', timestamp: '2026-06-16', parameter: 'strength', value: 0.85, label: 'Lydabsorpsjonskoeffisient (αw)', experimentTitle: 'Klangromstest' }
+    ]
+  },
+  {
+    id: 'mat-13',
+    name: 'Biolignin Sponplate uten Formaldehyd (LignoBond Wood)',
+    category: 'Tre & Kork',
+    ownerId: 'res-8',
+    description: 'Miljøvennlig spon- og fiberplate der tradisjonelt kreftfremkallende formaldehydlim (UF/PF) er erstattet med 100% enzymatisk kryssoverlenket tre-lignin høstet fra norsk celluloseindustri (Borregaard LignoTech).',
+    chemicalComposition: 'Enzymatisk aktivert kraft-lignin, glyoksal som bio-kryssbinder, cellulose, hemicellulose, naturlig furu-voks.',
+    biologicalComposition: '88% gran- og furuspon fra norske sagbruk og 12% bio-basert lignin-lim.',
+    trl: 8,
+    applicationAreas: ['Møbelproduksjon', 'Innvendig veggbekledning', 'Bærende undertaksplater', 'Parkettunderlag'],
+    suppliers: ['Borregaard AS', 'Norske Skog', 'BioBuild Norge AS'],
+    epd: {
+      gwp: -1.65,
+      recycledContent: 92,
+      lifetime: 60,
+      circularity: 'Kan gjenbrukes direkte til ny sponplate eller brennes rent uten giftige gasser.'
+    },
+    testResults: {
+      fire: 'Karboniserer langsomt; oppfyller standard klasse D-s2, d0 uten tilsetning av halogenerte brannhemmere.',
+      moisture: 'Tykkelsessvelging etter 24t i vann er under 8% (i tråd med EN 317 for fuktbestandige plater).',
+      strength: 'Tverrstrekkfasthet (internal bond) på 0.65 MPa, bøyefasthet på 16.5 MPa.',
+      durability: 'Utmerket dimensjonsstabilitet over 60 års innvendig brukstid.',
+      fireRating: 'Klasse D-s2, d0 / P5 fuktbestandig',
+      strengthMpa: 16.5,
+      durabilityYears: 60
+    },
+    healthRisk: 'E1 og CARB Phase 2 sertifisert med absolutt NULL utslipp av formaldehyd eller helseskadelige gasser.',
+    articles: [
+      {
+        id: 'art-13-1',
+        title: 'Formaldehyde-free particleboards bonded with enzymatically activated Kraft lignin',
+        authors: 'Hauge, I., Dahl, J. & Jensen, M.',
+        year: 2024,
+        journal: 'ACS Industrial & Engineering Chemistry Research',
+        summary: 'Optimering av pressetemperatur og enzymatisk oksidasjon for kraft-lignin som bindemiddel i sponplater.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-13-1',
+        question: 'Kan pressetiden i varmpressen reduseres til under 10 sekunder per millimeter platetykkelse?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-13-1',
+        title: 'Katalytisk akselerasjon av lignin-herding',
+        hypothesis: 'Tilsetning av 1.5% bio-basert sitronsyre vil senke påkrevd herdetemperatur fra 190°C til 165°C.',
+        independentVariable: 'Sitronsyre andel (0%, 0.5%, 1.5%, 2.5%)',
+        dependentVariable: 'Tverrstrekkfasthet (Internal Bond) og herdetid',
+        status: 'Fullført',
+        startDate: '2026-03-01',
+        endDate: '2026-04-10',
+        logs: [
+          '01.03.2026: Fremstilte 24 testplater med varierende syreinnhold.',
+          '10.04.2026: Målte tverrstrekk på Zwick/Roell universalprüfmaschine.'
+        ],
+        results: '1.5% sitronsyre tillot senking av pressetemperatur til 170°C uten tap av indre binding (0.68 MPa oppnådd).'
+      }
+    ],
+    measurements: [
+      { id: 'm-13-1', timestamp: '2026-04-11', parameter: 'strength', value: 16.5, label: 'Bøyefasthet (MPa)', experimentTitle: 'Katalytisk akselerasjon' }
+    ]
+  },
+  {
+    id: 'mat-14',
+    name: 'Bioluminesent Mycena Skilt- & Belysningspanel',
+    category: 'Mykologiske',
+    ownerId: 'res-1',
+    description: 'Nyskapende selvlysende biologisk overflate-panel som benytter levende bioluminesente sopparter (Mycena chlorophos / Panellus stipticus) dyrket i transparent hydrogel. Gir mild grønn nødlysbelysning i rømningstraseer uten strømforbruk.',
+    chemicalComposition: 'Luciferin, enzymet luciferase, kalsiumalginat, glyserol, kiselgel, mineralnæring.',
+    biologicalComposition: 'Mycena chlorophos mycel-kultur integrert i en transparent, pustende silikon-alginat matrise.',
+    trl: 5,
+    applicationAreas: ['Nødlys-markering i trappeoppganger', 'Rømningsveier i kontorbygg', 'Arktiske utendørs stilykt-markører', 'Dekorative lyspaneler'],
+    suppliers: ['NTNU BioLight Lab', 'BioBuild Norge AS', 'GlowBio Inc'],
+    epd: {
+      gwp: -0.8,
+      recycledContent: 90,
+      lifetime: 15,
+      circularity: '100% biologisk nedbrytbar etter endt lys-syklus.'
+    },
+    testResults: {
+      fire: 'Selvslukkende hydrogel-struktur.',
+      moisture: 'Krever lukket, men pustende kapsling med 75-85% fuktighet for opprettholdelse av bioluminescens.',
+      strength: 'Fleksibel, gummilignende overflateskinn.',
+      durability: 'Kontinuerlig lysemisjon i opptil 180 dager per fôringssyklus.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 1.2,
+      durabilityYears: 15
+    },
+    healthRisk: '100% ufarlige, ugifte soppkulturer uten helserisiko for bygningsbrukere.',
+    articles: [
+      {
+        id: 'art-14-1',
+        title: 'Bioluminescent fungal matrices for zero-energy ambient lighting in indoor spaces',
+        authors: 'Jensen, M., Vanebo, S. & Solberg, L.',
+        year: 2026,
+        journal: 'Nature Biotechnology & Architecture',
+        summary: 'Kvantifisering av lysintensitet (lux) og næringsstoff-levetid for Mycena-paneler i rømningsveier.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-14-1',
+        question: 'Hvordan kan vi forlenge den kontinuerlige bioluminescens-syklusen til over 2 år ved faste næringsdepoter?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-14-1',
+        title: 'Sakte-frigjørende næringskapsler for forlenger bioluminescens',
+        hypothesis: 'Mikrokapsler med tre-sukker (trehalose) forlenger lysemisjonen fra 60 dager til 210 dager.',
+        independentVariable: 'Kapselmateriale og trehalose-konsentrasjon',
+        dependentVariable: 'Luminans (mcd/m2) målt med spektroradiometer over tid',
+        status: 'Aktiv',
+        startDate: '2026-05-10',
+        logs: [
+          '10.05.2026: Innkapslet Mycena chlorophos i 10 testmoduler.',
+          '01.07.2026: Målte stabilt nødlys på 12 mcd/m2 etter 50 dagers kontinuerlig lysing.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-14-1', timestamp: '2026-07-02', parameter: 'strength', value: 12.0, label: 'Luminans Nødlys (mcd/m2)', experimentTitle: 'Sakte-frigjørende næringskapsler' }
+    ]
   }
 ];
 
@@ -771,6 +968,28 @@ export const initialResearchers: Researcher[] = [
     activeHours: 150,
     successRate: 95,
     bio: 'Spesialist på termisk pyrolyse for omdanning av organisk restråstoff til stabile karbonfeller i infrastruktur og veidekker.'
+  },
+  {
+    id: 'res-8',
+    name: 'Dr. Ingrid Hauge',
+    title: 'Spesialist på Bio-Baserte Lim & Harpikser',
+    department: 'Grønn Kjemi & Bio-Klebemidler',
+    expertise: ['Enzymatisk Lignin-Lim', 'Soyaprotein-Harpiks', 'Formaldehydfrie Bindemidler', 'Bio-Terskel Tester'],
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+    activeHours: 128,
+    successRate: 92,
+    bio: 'Leder kjemilaboratoriet for utvikling av 100% giftfrie bio-bindemidler utvunnet fra tre-lignin og landbruksavfall til treindustrien.'
+  },
+  {
+    id: 'res-9',
+    name: 'Dr. Sindre Vanebo',
+    title: 'Seniorforsker på Marint Lignin & Talg',
+    department: 'Akvatiske Biomassematerialer',
+    expertise: ['Tare-Alginat', 'Skjellmelet-Mørtel', 'Akvatisk Korrosjonsvern', 'Bioluminescence Sensorer'],
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    activeHours: 115,
+    successRate: 90,
+    bio: 'Fokuserer på utnyttelse av ilandskyldt sukkertare og restråstoff fra skjellnæringen for utvikling av fukt- og saltherdede kystmaterialer.'
   }
 ];
 
