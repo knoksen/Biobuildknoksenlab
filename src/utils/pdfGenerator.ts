@@ -48,6 +48,25 @@ export function generateMaterialPDFReport(material: BioMaterial, owner?: Researc
   doc.text(`Kategori: ${material.category}  |  TRL Nivå: ${material.trl}/9  |  Forsknings-eier: ${owner ? owner.name : 'Ufordelt'}`, 14, currentY);
   currentY += 8;
 
+  // Proven Testing Badge Box if present
+  if (material.provenTesting && material.provenTesting.isVerified) {
+    const pt = material.provenTesting;
+    doc.setFillColor(245, 247, 240);
+    doc.setDrawColor(90, 120, 60);
+    doc.roundedRect(14, currentY, 182, 18, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(40, 90, 40);
+    doc.text(`AKKREDITERT PROVEN PRØVINGSMERKE: [${pt.tier}] - Nivå: ${pt.badgeLevel}`, 18, currentY + 6);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(60, 70, 60);
+    doc.text(`Akkrediterings-ID: ${pt.accreditationNumber} | Lab: ${pt.laboratory} | Verifisert: ${pt.verifiedDate} | Reproduserbarhet: ${pt.reproducibilityScore}%`, 18, currentY + 12);
+    currentY += 23;
+  }
+
   // Description
   doc.setFontSize(9);
   doc.setTextColor(60, 60, 50);
@@ -128,7 +147,39 @@ export function generateMaterialPDFReport(material: BioMaterial, owner?: Researc
   // @ts-ignore
   currentY = doc.lastAutoTable.finalY + 8;
 
-  // Quantitative Measurement Points if available
+  // Passed Accredited Standards if available
+  if (material.provenTesting && material.provenTesting.passedStandards && material.provenTesting.passedStandards.length > 0) {
+    if (currentY > 240) {
+      doc.addPage();
+      currentY = 15;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(40, 90, 40);
+    doc.text('Verifiserte Standarder & Prøvingsnormer (Proven Badges)', 14, currentY);
+    currentY += 4;
+
+    const stdRows = material.provenTesting.passedStandards.map((std, idx) => [
+      `#${idx + 1}`,
+      std,
+      'BESTÅTT & SERTIFISERT'
+    ]);
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Nr', 'Standardkode & Beskrivelse', 'Status']],
+      body: stdRows,
+      theme: 'striped',
+      headStyles: { fillColor: [40, 90, 40], textColor: 255, fontSize: 8 },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: { 0: { cellWidth: 15, fontStyle: 'bold' }, 2: { cellWidth: 45, textColor: [30, 110, 30], fontStyle: 'bold' } },
+      margin: { left: 14, right: 14 }
+    });
+
+    // @ts-ignore
+    currentY = doc.lastAutoTable.finalY + 8;
+  }
   if (material.measurements && material.measurements.length > 0) {
     if (currentY > 240) {
       doc.addPage();

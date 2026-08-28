@@ -23,6 +23,7 @@ import {
   Sparkles, 
   Trash2, 
   TrendingDown, 
+  TrendingUp,
   Upload, 
   User, 
   Users, 
@@ -40,9 +41,16 @@ import {
   Video,
   Terminal,
   Activity,
-  Bot
+  Bot,
+  Tag,
+  MapPin,
+  Crosshair,
+  Target,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { initialBioMaterials, initialResearchers } from './data';
+import { ImageTag } from './types';
 import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, Researcher, MeasurementPoint } from './types';
 import UnrealBridge from './components/UnrealBridge';
 import EierallokeringView from './components/EierallokeringView';
@@ -65,13 +73,339 @@ import {
 } from 'recharts';
 
 
+const TaggedImageOverlay: React.FC<{
+  imageSrc: string;
+  tags: ImageTag[];
+  pendingTagPos: { x: number; y: number } | null;
+  onImageClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onRemoveTag: (id: string) => void;
+}> = ({ imageSrc, tags, pendingTagPos, onImageClick, onRemoveTag }) => {
+  return (
+    <div 
+      className="relative w-full h-full cursor-crosshair overflow-hidden group/tagcanvas"
+      onClick={onImageClick}
+      title="Klikk for å plassere merkelapp / avviksnotat"
+    >
+      <img
+        src={imageSrc}
+        alt="Testresultat"
+        className="w-full h-full object-cover select-none"
+      />
+
+      {/* Guide hint badge */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/85 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide pointer-events-none opacity-80 group-hover/tagcanvas:opacity-100 transition-opacity flex items-center gap-1 shadow-md z-30">
+        <Target className="w-3 h-3 text-amber-400 animate-pulse" />
+        <span>Klikk for merkelapp</span>
+      </div>
+
+      {/* Numbered Tag Pins */}
+      {tags.map((tag, idx) => (
+        <div
+          key={tag.id}
+          style={{ left: `${tag.x}%`, top: `${tag.y}%` }}
+          className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group/pin"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 border-white transition-transform transform group-hover/pin:scale-125 ${
+            tag.category === 'Sprekk' ? 'bg-red-600' :
+            tag.category === 'Fukt' ? 'bg-blue-600' :
+            tag.category === 'Delaminering' ? 'bg-orange-600' :
+            tag.category === 'Misfarging' ? 'bg-amber-600' : 'bg-emerald-600'
+          }`}>
+            {idx + 1}
+          </div>
+
+          {/* Tooltip on pin hover */}
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-48 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
+            <div className="flex items-center justify-between font-bold border-b border-slate-700 pb-1 text-[10px] uppercase text-slate-300">
+              <span className="flex items-center gap-1">
+                <Tag className="w-3 h-3 text-amber-400" /> #{idx + 1} {tag.category}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveTag(tag.id);
+                }}
+                className="text-red-400 hover:text-red-300 text-[10px] font-bold cursor-pointer"
+              >
+                Slett
+              </button>
+            </div>
+            <p className="text-[11px] text-slate-100 font-medium mt-1">{tag.label}</p>
+            <div className="text-[9px] text-slate-400 mt-0.5">Pos: ({tag.x}%, {tag.y}%)</div>
+          </div>
+        </div>
+      ))}
+
+      {/* Pending click crosshair marker */}
+      {pendingTagPos && (
+        <div
+          style={{ left: `${pendingTagPos.x}%`, top: `${pendingTagPos.y}%` }}
+          className="absolute -translate-x-1/2 -translate-y-1/2 z-40 animate-ping w-8 h-8 rounded-full border-2 border-purple-300 bg-purple-500/50 pointer-events-none"
+        />
+      )}
+    </div>
+  );
+};
+
+export interface TimelineEventItem {
+  id: string;
+  date: string;
+  timestampMs: number;
+  type: 'maling' | 'foto' | 'milepel' | 'logger' | 'ai_analyse';
+  title: string;
+  subtitle?: string;
+  description: string;
+  parameter?: 'strength' | 'moisture' | 'gwp';
+  valueStr?: string;
+  imageUrl?: string;
+  refImageUrl?: string;
+  experimentTitle?: string;
+  badgeText: string;
+  badgeBg: string;
+  badgeTextColor: string;
+  iconType: 'activity' | 'camera' | 'beaker' | 'check' | 'file' | 'sparkles' | 'flame' | 'award' | 'droplets';
+}
+
+const parseDateToMs = (dateStr: string): number => {
+  if (!dateStr) return 0;
+  const ddmmyyyy = dateStr.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, '0');
+    const month = ddmmyyyy[2].padStart(2, '0');
+    const year = ddmmyyyy[3];
+    return new Date(`${year}-${month}-${day}T12:00:00`).getTime() || 0;
+  }
+  const yyyymmdd = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (yyyymmdd) {
+    return new Date(dateStr).getTime() || 0;
+  }
+  return 0;
+};
+
+const getTimelineEventsForMaterial = (material: BioMaterial): TimelineEventItem[] => {
+  if (!material) return [];
+  const events: TimelineEventItem[] = [];
+
+  // 1. Registered Custom Measurements
+  if (material.measurements && material.measurements.length > 0) {
+    material.measurements.forEach((meas) => {
+      const valStr = `${meas.value} ${
+        meas.parameter === 'strength' ? 'MPa' : meas.parameter === 'moisture' ? '%' : 'kg CO₂ eq/kg'
+      }`;
+      events.push({
+        id: `meas-${meas.id}`,
+        date: meas.timestamp,
+        timestampMs: parseDateToMs(meas.timestamp),
+        type: 'maling',
+        title: `Måling: ${valStr}`,
+        subtitle: `Målepunkt: ${meas.label}`,
+        description: `Registrert lab-måling.${meas.experimentTitle ? ` Tilknyttet eksperiment: "${meas.experimentTitle}"` : ''}`,
+        parameter: meas.parameter,
+        valueStr: valStr,
+        experimentTitle: meas.experimentTitle,
+        badgeText: meas.parameter === 'strength' ? 'Styrketest' : meas.parameter === 'moisture' ? 'Fukttest' : 'EPD Karbon',
+        badgeBg: meas.parameter === 'strength' ? 'bg-emerald-100' : meas.parameter === 'moisture' ? 'bg-blue-100' : 'bg-amber-100',
+        badgeTextColor: meas.parameter === 'strength' ? 'text-emerald-950' : meas.parameter === 'moisture' ? 'text-blue-950' : 'text-amber-950',
+        iconType: 'activity'
+      });
+    });
+  }
+
+  // 2. Experiments & Logs
+  if (material.experiments && material.experiments.length > 0) {
+    material.experiments.forEach((exp) => {
+      events.push({
+        id: `exp-start-${exp.id}`,
+        date: exp.startDate,
+        timestampMs: parseDateToMs(exp.startDate),
+        type: 'milepel',
+        title: `Forsøk opprettet: "${exp.title}"`,
+        subtitle: `Status: ${exp.status}`,
+        description: `Hypotese: ${exp.hypothesis || 'Ingen spesifisert hypotese.'}`,
+        experimentTitle: exp.title,
+        badgeText: 'Forsøk Startet',
+        badgeBg: 'bg-purple-100',
+        badgeTextColor: 'text-purple-950',
+        iconType: 'beaker'
+      });
+
+      if (exp.endDate && exp.status === 'Fullført') {
+        events.push({
+          id: `exp-end-${exp.id}`,
+          date: exp.endDate,
+          timestampMs: parseDateToMs(exp.endDate),
+          type: 'milepel',
+          title: `Forsøk fullført: "${exp.title}"`,
+          subtitle: `Endelig Konklusjon`,
+          description: exp.results || 'Fullført og godkjent.',
+          experimentTitle: exp.title,
+          badgeText: 'Forsøk Fullført',
+          badgeBg: 'bg-emerald-100',
+          badgeTextColor: 'text-emerald-950',
+          iconType: 'check'
+        });
+      }
+
+      if (exp.logs && exp.logs.length > 0) {
+        exp.logs.forEach((logStr, lIdx) => {
+          let datePart = exp.startDate;
+          let textContent = logStr;
+
+          const dateMatch = logStr.match(/^(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2}):?\s*(.*)/);
+          if (dateMatch) {
+            datePart = dateMatch[1];
+            textContent = dateMatch[2];
+          }
+
+          if (textContent.includes('|||image:')) {
+            const imgMatch = textContent.match(/\|\|\|image:(.*?)(?:\|\|\||$)/);
+            const refMatch = textContent.match(/\|\|\|ref:(.*?)(?:\|\|\||$)/);
+            const imgUrl = imgMatch ? imgMatch[1] : undefined;
+            const refUrl = refMatch ? refMatch[1] : undefined;
+            const cleanDesc = textContent.replace(/\|\|\|image:.*?$/, '').replace(/\[Foto-dokumentasjon\]\s*/, '').trim();
+
+            if (textContent.includes('[AI Visuell Analyse')) {
+              events.push({
+                id: `log-ai-${exp.id}-${lIdx}`,
+                date: datePart,
+                timestampMs: parseDateToMs(datePart),
+                type: 'ai_analyse',
+                title: 'AI Visuell Tilstandsanalyse',
+                subtitle: `Forsøk: "${exp.title}"`,
+                description: cleanDesc,
+                imageUrl: imgUrl,
+                refImageUrl: refUrl,
+                experimentTitle: exp.title,
+                badgeText: 'AI Visuell Analyse',
+                badgeBg: 'bg-purple-100',
+                badgeTextColor: 'text-purple-950',
+                iconType: 'sparkles'
+              });
+            } else {
+              events.push({
+                id: `log-img-${exp.id}-${lIdx}`,
+                date: datePart,
+                timestampMs: parseDateToMs(datePart),
+                type: 'foto',
+                title: 'Foto-dokumentasjon & Sammenligning',
+                subtitle: `Forsøk: "${exp.title}"`,
+                description: cleanDesc || 'Foto registrert fra laboratorie-kamera.',
+                imageUrl: imgUrl,
+                refImageUrl: refUrl,
+                experimentTitle: exp.title,
+                badgeText: 'Bildebevis',
+                badgeBg: 'bg-blue-100',
+                badgeTextColor: 'text-blue-950',
+                iconType: 'camera'
+              });
+            }
+          } else {
+            events.push({
+              id: `log-txt-${exp.id}-${lIdx}`,
+              date: datePart,
+              timestampMs: parseDateToMs(datePart),
+              type: 'logger',
+              title: 'Lab-oppføring',
+              subtitle: `Forsøk: "${exp.title}"`,
+              description: textContent,
+              experimentTitle: exp.title,
+              badgeText: 'Lab-notat',
+              badgeBg: 'bg-stone-100',
+              badgeTextColor: 'text-stone-800',
+              iconType: 'file'
+            });
+          }
+        });
+      }
+    });
+  }
+
+  if (material.testResults) {
+    if (material.testResults.fire) {
+      events.push({
+        id: `baseline-fire-${material.id}`,
+        date: '01.01.2026',
+        timestampMs: parseDateToMs('01.01.2026'),
+        type: 'milepel',
+        title: 'Branntest & ISO 1182 Sertifisering',
+        subtitle: 'Vertikal branntestovn',
+        description: `${material.testResults.fire} (Klasse ${material.testResults.fireRating || 'N/A'})`,
+        badgeText: 'ISO Branntest',
+        badgeBg: 'bg-amber-100',
+        badgeTextColor: 'text-amber-950',
+        iconType: 'flame'
+      });
+    }
+
+    if (material.testResults.strengthMpa) {
+      events.push({
+        id: `baseline-strength-${material.id}`,
+        date: '05.01.2026',
+        timestampMs: parseDateToMs('05.01.2026'),
+        type: 'maling',
+        title: `Mekanisk Sluttfasthet: ${material.testResults.strengthMpa} MPa`,
+        subtitle: 'Standard 28 dagers herdetest',
+        description: material.testResults.strength || 'Målt i hydraulisk trykkpresse.',
+        parameter: 'strength',
+        valueStr: `${material.testResults.strengthMpa} MPa`,
+        badgeText: '28D Sluttfasthet',
+        badgeBg: 'bg-emerald-100',
+        badgeTextColor: 'text-emerald-950',
+        iconType: 'award'
+      });
+    }
+
+    if (material.testResults.moisture) {
+      events.push({
+        id: `baseline-moisture-${material.id}`,
+        date: '10.01.2026',
+        timestampMs: parseDateToMs('10.01.2026'),
+        type: 'maling',
+        title: 'Hygroskopisk fuktevaluering (ISO 12571)',
+        subtitle: 'Klimakammer eksponering',
+        description: material.testResults.moisture,
+        parameter: 'moisture',
+        badgeText: 'Fuktmotstand',
+        badgeBg: 'bg-blue-100',
+        badgeTextColor: 'text-blue-950',
+        iconType: 'droplets'
+      });
+    }
+  }
+
+  return events;
+};
+
 export default function App() {
   // Load initial materials from localStorage or initialBioMaterials
   const [materials, setMaterials] = useState<BioMaterial[]>(() => {
     const saved = localStorage.getItem('biobuild_materials');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed: BioMaterial[] = JSON.parse(saved);
+        const merged = [...parsed];
+        initialBioMaterials.forEach(initMat => {
+          const existingIdx = merged.findIndex(m => m.id === initMat.id);
+          if (existingIdx === -1) {
+            merged.push(initMat);
+          } else if (!merged[existingIdx].provenTesting && initMat.provenTesting) {
+            merged[existingIdx] = {
+              ...merged[existingIdx],
+              provenTesting: initMat.provenTesting,
+              testResults: {
+                ...initMat.testResults,
+                ...merged[existingIdx].testResults,
+                provenFireMark: initMat.testResults.provenFireMark ?? merged[existingIdx].testResults?.provenFireMark,
+                provenMoistureMark: initMat.testResults.provenMoistureMark ?? merged[existingIdx].testResults?.provenMoistureMark,
+                provenStrengthMark: initMat.testResults.provenStrengthMark ?? merged[existingIdx].testResults?.provenStrengthMark,
+                provenDurabilityMark: initMat.testResults.provenDurabilityMark ?? merged[existingIdx].testResults?.provenDurabilityMark,
+              }
+            };
+          }
+        });
+        return merged;
       } catch (e) {
         console.error('Failed parsing saved materials', e);
       }
@@ -206,6 +540,19 @@ export default function App() {
   const [newMeasExpId, setNewMeasExpId] = useState('');
   const [selectedAnalyseMetric, setSelectedAnalyseMetric] = useState<'styrke' | 'fuktighet' | 'gwp'>('styrke');
 
+  // Resultatanalyse Timeline State
+  const [timelineFilter, setTimelineFilter] = useState<'alle' | 'malinger' | 'foto' | 'milepeler' | 'logger'>('alle');
+  const [timelineSortOrder, setTimelineSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [timelineSearchTerm, setTimelineSearchTerm] = useState('');
+  const [selectedTimelinePhoto, setSelectedTimelinePhoto] = useState<{
+    url: string;
+    refUrl?: string;
+    title: string;
+    desc: string;
+    date: string;
+    experimentTitle?: string;
+  } | null>(null);
+
 
   // AI Chat State
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
@@ -247,6 +594,19 @@ export default function App() {
     recommendations: string[];
     usedModel: string;
   } | null>(null);
+
+  // Merkelapper og Avviksnotater på Testbilde
+  const [imageTags, setImageTags] = useState<ImageTag[]>([]);
+  const [pendingTagPos, setPendingTagPos] = useState<{ x: number; y: number } | null>(null);
+  const [newTagLabel, setNewTagLabel] = useState('');
+  const [newTagCategory, setNewTagCategory] = useState<'Sprekk' | 'Fukt' | 'Delaminering' | 'Misfarging' | 'Generelt'>('Sprekk');
+  const [isTaggingActive, setIsTaggingActive] = useState(true);
+  const [activeHoverTagId, setActiveHoverTagId] = useState<string | null>(null);
+  const [burnTagsToSavedImage, setBurnTagsToSavedImage] = useState(true);
+
+  // Proven Testing Certification Modal & Filter
+  const [showProvenModal, setShowProvenModal] = useState(false);
+  const [onlyProvenFilter, setOnlyProvenFilter] = useState(false);
 
   // Get active material
   const activeMaterial = materials.find(m => m.id === selectedMaterialId) || materials[0];
@@ -353,6 +713,7 @@ export default function App() {
           referenceImage,
           materialName: activeMaterial ? activeMaterial.name : 'Bio-materiale',
           model: selectedGeminiModel,
+          imageTags: imageTags,
         }),
       });
 
@@ -377,13 +738,165 @@ export default function App() {
     }
   };
 
-  const handleSaveCapturedPhoto = (e: React.FormEvent) => {
+  // Helper for rendering tags onto canvas image before saving
+  const renderTaggedImageCanvas = (src: string, tags: ImageTag[]): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!tags || tags.length === 0) {
+        resolve(src);
+        return;
+      }
+
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(src);
+          return;
+        }
+
+        const legendHeight = Math.max(60, 44 + tags.length * 30);
+        canvas.width = img.width;
+        canvas.height = img.height + legendHeight;
+
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+
+        const categoryColors: Record<string, { bg: string; text: string }> = {
+          Sprekk: { bg: '#dc2626', text: '#ffffff' },
+          Fukt: { bg: '#2563eb', text: '#ffffff' },
+          Delaminering: { bg: '#ea580c', text: '#ffffff' },
+          Misfarging: { bg: '#ca8a04', text: '#ffffff' },
+          Generelt: { bg: '#16a34a', text: '#ffffff' },
+        };
+
+        // Draw pins on photo
+        tags.forEach((tag, idx) => {
+          const pinX = (tag.x / 100) * img.width;
+          const pinY = (tag.y / 100) * img.height;
+          const colors = categoryColors[tag.category] || categoryColors.Generelt;
+          const radius = Math.max(16, Math.round(img.width * 0.024));
+
+          ctx.save();
+          // Drop shadow
+          ctx.beginPath();
+          ctx.arc(pinX, pinY + 2, radius + 2, 0, 2 * Math.PI);
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fill();
+
+          // Pin circle
+          ctx.beginPath();
+          ctx.arc(pinX, pinY, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = colors.bg;
+          ctx.fill();
+
+          // White border
+          ctx.lineWidth = Math.max(3, Math.round(radius * 0.22));
+          ctx.strokeStyle = '#ffffff';
+          ctx.stroke();
+
+          // Number text
+          ctx.fillStyle = colors.text;
+          ctx.font = `bold ${Math.round(radius * 1.15)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${idx + 1}`, pinX, pinY);
+
+          ctx.restore();
+        });
+
+        // Draw bottom legend background
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, img.height, canvas.width, legendHeight);
+
+        // Header line
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('AVVIKS- OG MERKELAPPDOKUMENTASJON (BioBuild Lab)', 20, img.height + 14);
+
+        // Render each tag in legend
+        tags.forEach((tag, idx) => {
+          const yPos = img.height + 44 + idx * 28;
+          const colors = categoryColors[tag.category] || categoryColors.Generelt;
+
+          // Number badge
+          ctx.fillStyle = colors.bg;
+          ctx.fillRect(20, yPos, 26, 22);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${idx + 1}`, 33, yPos + 11);
+
+          // Category badge text
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 13px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const catLabel = `[${tag.category.toUpperCase()}]: `;
+          ctx.fillText(catLabel, 56, yPos + 11);
+
+          const catWidth = ctx.measureText(catLabel).width;
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '13px sans-serif';
+          ctx.fillText(tag.label, 56 + catWidth, yPos + 11);
+        });
+
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      };
+      img.onerror = () => resolve(src);
+      img.src = src;
+    });
+  };
+
+  const handleImageClickToTag = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!capturedImage || !isTaggingActive) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    setPendingTagPos({ x, y });
+    setNewTagLabel('');
+  };
+
+  const handleAddTag = () => {
+    if (!pendingTagPos) return;
+    const tag: ImageTag = {
+      id: `tag-${Date.now()}`,
+      x: pendingTagPos.x,
+      y: pendingTagPos.y,
+      label: newTagLabel.trim() || `${newTagCategory} ved (${pendingTagPos.x}%, ${pendingTagPos.y}%)`,
+      category: newTagCategory,
+    };
+    setImageTags(prev => [...prev, tag]);
+    setPendingTagPos(null);
+    setNewTagLabel('');
+  };
+
+  const handleRemoveTag = (id: string) => {
+    setImageTags(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleSaveCapturedPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!capturedImage || !selectedExpIdForPhoto || !activeMaterial) return;
 
+    let finalCapturedImage = capturedImage;
+    if (burnTagsToSavedImage && imageTags.length > 0) {
+      finalCapturedImage = await renderTaggedImageCanvas(capturedImage, imageTags);
+    }
+
     const dateStr = new Date().toLocaleDateString('no-NO') + ' ' + new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
-    const descriptionText = photoDescription.trim() || 'Fysisk testresultat registrert med laboratoriekamera.';
-    let logMessage = `${dateStr}: [Foto-dokumentasjon] ${descriptionText} |||image:${capturedImage}`;
+    let descriptionText = photoDescription.trim() || 'Fysisk testresultat registrert med laboratoriekamera.';
+
+    if (imageTags.length > 0) {
+      const tagsSummary = `\n[Merkede avvik (${imageTags.length})]: ` + imageTags.map((t, i) => `#${i + 1} ${t.category}: "${t.label}"`).join(', ');
+      descriptionText += tagsSummary;
+    }
+
+    let logMessage = `${dateStr}: [Foto-dokumentasjon] ${descriptionText} |||image:${finalCapturedImage}`;
     if (referenceImage) {
       logMessage += `|||ref:${referenceImage}`;
     }
@@ -407,8 +920,11 @@ export default function App() {
     }));
 
     setCapturedImage(null);
+    setImageTags([]);
+    setPendingTagPos(null);
     setPhotoDescription('');
-    alert('Foto og logg med før-og-etter sammenligning ble lagret i eksperimentets historikk!');
+    setAiAnalysisResult(null);
+    alert('Foto og logg med fangede merkelapper og avviksnotater ble lagret i eksperimentets historikk!');
   };
 
   const handleSaveMeasurement = (e: React.FormEvent) => {
@@ -621,9 +1137,12 @@ export default function App() {
     const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           m.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           m.chemicalComposition.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          m.biologicalComposition.toLowerCase().includes(searchTerm.toLowerCase());
+                          m.biologicalComposition.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (m.provenTesting?.tier && m.provenTesting.tier.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (m.provenTesting?.accreditationNumber && m.provenTesting.accreditationNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'Alle' || m.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesProven = !onlyProvenFilter || (m.provenTesting && m.provenTesting.isVerified);
+    return matchesSearch && matchesCategory && matchesProven;
   });
 
   // Reset to initial data helper
@@ -1638,8 +2157,23 @@ export default function App() {
             </div>
 
             {/* Category selection pill filter */}
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold uppercase text-[#2c2c24]/50">Kategorifilter:</span>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase text-[#2c2c24]/50">Kategorifilter:</span>
+                <button
+                  type="button"
+                  onClick={() => setOnlyProvenFilter(!onlyProvenFilter)}
+                  className={`text-[9.5px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider transition-all flex items-center gap-1 border ${
+                    onlyProvenFilter
+                      ? 'bg-emerald-800 text-white border-emerald-900 shadow-2xs'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+                  }`}
+                  title="Vis kun materialer med godkjent og akkreditert prøvingsstatus"
+                >
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Kun Akkrediterte</span>
+                </button>
+              </div>
               <div className="flex flex-wrap gap-1">
                 {categories.map((cat) => (
                   <button
@@ -1674,7 +2208,7 @@ export default function App() {
                 <HelpCircle className="w-8 h-8 text-amber-600 mb-2" />
                 <p className="text-xs font-medium text-gray-500">Ingen materialer matcher søkekriteriene.</p>
                 <button 
-                  onClick={() => { setSearchTerm(''); setSelectedCategory('Alle'); }}
+                  onClick={() => { setSearchTerm(''); setSelectedCategory('Alle'); setOnlyProvenFilter(false); }}
                   className="mt-3 text-[10px] text-[#5A5A40] font-bold uppercase tracking-wider underline hover:opacity-85"
                 >
                   Nullstill filtre
@@ -1718,6 +2252,27 @@ export default function App() {
                       <h4 className="text-xs font-bold font-serif italic mt-1.5 text-[#2c2c24] group-hover:text-[#5A5A40] transition-colors">
                         {mat.name}
                       </h4>
+
+                      {/* Proven Testing Badge Mark */}
+                      {mat.provenTesting?.isVerified && (
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-900/10 text-emerald-800 border border-emerald-300">
+                            <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
+                            <span>{mat.provenTesting.tier}</span>
+                          </span>
+                          <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
+                            mat.provenTesting.badgeLevel === 'PLATINUM'
+                              ? 'bg-slate-900 text-white'
+                              : mat.provenTesting.badgeLevel === 'GOLD'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : mat.provenTesting.badgeLevel === 'EMERALD'
+                              ? 'bg-emerald-800 text-white'
+                              : 'bg-stone-200 text-stone-800'
+                          }`}>
+                            {mat.provenTesting.badgeLevel}
+                          </span>
+                        </div>
+                      )}
                       
                       <p className="text-[11px] opacity-75 line-clamp-2 mt-1 leading-relaxed">
                         {mat.description}
@@ -1824,6 +2379,81 @@ export default function App() {
                   <p className="text-xs md:text-sm text-[#5a5a4a] leading-relaxed mt-2 max-w-xl">
                     {activeMaterial.description}
                   </p>
+
+                  {/* Proven Testing Accreditation & Badge Bar */}
+                  {activeMaterial.provenTesting?.isVerified ? (
+                    <div className="mt-4 p-3.5 bg-linear-to-r from-emerald-50/90 via-[#f9f9f5] to-emerald-50/40 rounded-2xl border border-emerald-200/90 shadow-2xs">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <div className="w-8 h-8 rounded-xl bg-emerald-800 text-white flex items-center justify-center shadow-xs shrink-0">
+                            <ShieldCheck className="w-5 h-5 text-emerald-100" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-950">
+                                {activeMaterial.provenTesting.tier}
+                              </span>
+                              <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded shadow-2xs ${
+                                activeMaterial.provenTesting.badgeLevel === 'PLATINUM'
+                                  ? 'bg-slate-900 text-white'
+                                  : activeMaterial.provenTesting.badgeLevel === 'GOLD'
+                                  ? 'bg-amber-400 text-amber-950 border border-amber-500/50'
+                                  : activeMaterial.provenTesting.badgeLevel === 'EMERALD'
+                                  ? 'bg-emerald-700 text-white'
+                                  : 'bg-stone-300 text-stone-900'
+                              }`}>
+                                {activeMaterial.provenTesting.badgeLevel} BEVIS
+                              </span>
+                              <span className="text-[10px] font-mono font-semibold text-emerald-900/80 bg-white/80 px-2 py-0.5 rounded border border-emerald-200">
+                                {activeMaterial.provenTesting.accreditationNumber}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-emerald-900/80 mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span>Akkreditert av: <strong>{activeMaterial.provenTesting.testingLab}</strong></span>
+                              <span>•</span>
+                              <span>Dato: {activeMaterial.provenTesting.verifiedDate}</span>
+                              <span>•</span>
+                              <span className="font-semibold text-emerald-950">
+                                {activeMaterial.provenTesting.reproducibilityScore}% repeterbarhet ({activeMaterial.provenTesting.confidenceInterval})
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowProvenModal(true)}
+                          className="bg-emerald-900 hover:bg-emerald-950 text-white text-[10px] font-bold uppercase tracking-wider py-1.5 px-3 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+                        >
+                          <Award className="w-3.5 h-3.5 text-emerald-200" />
+                          <span>Se Prøvingsattest</span>
+                        </button>
+                      </div>
+
+                      {/* Verified Standards Chips */}
+                      {activeMaterial.provenTesting.passedStandards && activeMaterial.provenTesting.passedStandards.length > 0 && (
+                        <div className="mt-2.5 pt-2.5 border-t border-emerald-200/60 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[9px] font-bold uppercase text-emerald-950/70 tracking-wider">
+                            Beståtte Normer:
+                          </span>
+                          {activeMaterial.provenTesting.passedStandards.map((std, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className="text-[9px] font-mono bg-white/90 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1"
+                            >
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
+                              {std}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                      <AlertTriangle className="w-3 h-3 text-amber-600" />
+                      <span>Materialet er i forskningsfase (TRL {activeMaterial.trl}) — Full laboratorie-akkreditering pågår.</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Key Quick Metrics Row */}
@@ -2266,10 +2896,12 @@ export default function App() {
                                         className="w-full h-full object-cover"
                                       />
                                     ) : capturedImage ? (
-                                      <img
-                                        src={capturedImage}
-                                        alt="Etter (Testresultat)"
-                                        className="w-full h-full object-cover"
+                                      <TaggedImageOverlay
+                                        imageSrc={capturedImage}
+                                        tags={imageTags}
+                                        pendingTagPos={pendingTagPos}
+                                        onImageClick={handleImageClickToTag}
+                                        onRemoveTag={handleRemoveTag}
                                       />
                                     ) : (
                                       <div className="w-full h-full bg-stone-800/90 flex flex-col items-center justify-center text-center p-6 text-white">
@@ -2278,7 +2910,7 @@ export default function App() {
                                       </div>
                                     )}
 
-                                    <div className="absolute top-3 right-3 bg-blue-900/90 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md backdrop-blur-xs flex items-center gap-1">
+                                    <div className="absolute top-3 right-3 bg-blue-900/90 text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md backdrop-blur-xs flex items-center gap-1 pointer-events-none">
                                       <span className="w-2 h-2 rounded-full bg-blue-400"></span>
                                       <span>ETTER (Testresultat)</span>
                                     </div>
@@ -2359,10 +2991,12 @@ export default function App() {
                                         className="w-full h-full object-cover"
                                       />
                                     ) : capturedImage ? (
-                                      <img
-                                        src={capturedImage}
-                                        alt="Etter (Testresultat)"
-                                        className="w-full h-full object-cover"
+                                      <TaggedImageOverlay
+                                        imageSrc={capturedImage}
+                                        tags={imageTags}
+                                        pendingTagPos={pendingTagPos}
+                                        onImageClick={handleImageClickToTag}
+                                        onRemoveTag={handleRemoveTag}
                                       />
                                     ) : (
                                       <div className="text-center p-4 text-xs text-gray-400">
@@ -2372,6 +3006,180 @@ export default function App() {
                                   </div>
                                 </div>
 
+                              </div>
+                            )}
+
+                            {/* PENDING TAG PLACEMENT FORM */}
+                            {capturedImage && pendingTagPos && (
+                              <div className="bg-white border-2 border-purple-500 rounded-2xl p-4 space-y-3 shadow-xl my-3 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="flex items-center justify-between border-b border-purple-100 pb-2">
+                                  <div className="flex items-center gap-2 text-purple-900 font-bold text-xs">
+                                    <MapPin className="w-4 h-4 text-purple-600" />
+                                    <span>Ny Merkelapp ved koordinater ({pendingTagPos.x}%, {pendingTagPos.y}%)</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPendingTagPos(null)}
+                                    className="text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+
+                                {/* Preset quick buttons */}
+                                <div>
+                                  <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                                    Hurtigvelging av avvikstype:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                      { label: '🔴 Mikrosprekk 0.2mm', cat: 'Sprekk', preset: 'Mikrosprekk 0.2mm langs fiberretningen' },
+                                      { label: '🔵 Fuktflekk / utblomstring', cat: 'Fukt', preset: 'Fuktgjennomtrengning / salt-utblomstring' },
+                                      { label: '🟠 Overflate-delaminering', cat: 'Delaminering', preset: 'Lokal delaminering av overflate' },
+                                      { label: '🟡 Misfarging', cat: 'Misfarging', preset: 'Fargeforandring / Oksidasjon' },
+                                      { label: '🟢 Pore / Ujevnhet', cat: 'Generelt', preset: 'Luftpore / strukturavvik i matrisen' },
+                                    ].map((presetItem, pIdx) => (
+                                      <button
+                                        key={pIdx}
+                                        type="button"
+                                        onClick={() => {
+                                          setNewTagCategory(presetItem.cat as any);
+                                          setNewTagLabel(presetItem.preset);
+                                        }}
+                                        className="text-[11px] bg-slate-100 hover:bg-purple-100 text-slate-700 hover:text-purple-900 px-2.5 py-1 rounded-lg border border-slate-200 transition-colors font-medium cursor-pointer"
+                                      >
+                                        {presetItem.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                  <div>
+                                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Kategori:</label>
+                                    <select
+                                      value={newTagCategory}
+                                      onChange={(e) => setNewTagCategory(e.target.value as any)}
+                                      className="w-full text-xs font-semibold p-2 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                    >
+                                      <option value="Sprekk">🔴 Sprekk</option>
+                                      <option value="Fukt">🔵 Fukt</option>
+                                      <option value="Delaminering">🟠 Delaminering</option>
+                                      <option value="Misfarging">🟡 Misfarging</option>
+                                      <option value="Generelt">🟢 Generelt / Observasjon</option>
+                                    </select>
+                                  </div>
+
+                                  <div className="sm:col-span-2">
+                                    <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Beskrivende notat / observasjon:</label>
+                                    <input
+                                      type="text"
+                                      value={newTagLabel}
+                                      onChange={(e) => setNewTagLabel(e.target.value)}
+                                      placeholder="f.eks. Sprekkdannelse 0.15mm etter trykkbelastning"
+                                      className="w-full text-xs p-2 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPendingTagPos(null)}
+                                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                  >
+                                    Avbryt
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleAddTag}
+                                    className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 shadow-xs flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Legg til merkelapp</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* TAG MANAGER CARD */}
+                            {capturedImage && (
+                              <div className="bg-[#f8fafc] border border-purple-200 rounded-2xl p-4 space-y-3 my-3 shadow-2xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
+                                      <Tag className="w-4 h-4" />
+                                    </div>
+                                    <div>
+                                      <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        Merkelapper & Avviksnotater på Bilde ({imageTags.length})
+                                      </h4>
+                                      <p className="text-[11px] text-slate-500">
+                                        Klikk direkte på testbildet over for å plassere presise notater og fargekoded piler.
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <label className="flex items-center gap-1.5 text-xs text-slate-700 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-200 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={burnTagsToSavedImage}
+                                        onChange={(e) => setBurnTagsToSavedImage(e.target.checked)}
+                                        className="accent-purple-600 rounded"
+                                      />
+                                      <span>Brenn inn merkelapper i lagret foto</span>
+                                    </label>
+                                    
+                                    {imageTags.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setImageTags([])}
+                                        className="text-[10px] text-red-600 hover:text-red-800 font-bold px-2 py-1 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                                      >
+                                        Slett alle
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {imageTags.length === 0 ? (
+                                  <div className="text-center py-3 bg-white rounded-xl border border-dashed border-purple-200 text-xs text-slate-500 flex items-center justify-center gap-2">
+                                    <Crosshair className="w-4 h-4 text-purple-500 animate-pulse" />
+                                    <span>Ingen merkelapper plassert enda. <strong>Klikk hvor som helst på testbildet for å plassere et avvikspunkt!</strong></span>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-wrap gap-2">
+                                    {imageTags.map((tag, idx) => (
+                                      <div
+                                        key={tag.id}
+                                        className="bg-white border border-slate-200 hover:border-purple-300 rounded-xl p-2 flex items-center gap-2.5 shadow-2xs group transition-all"
+                                      >
+                                        <span className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0 ${
+                                          tag.category === 'Sprekk' ? 'bg-red-600' :
+                                          tag.category === 'Fukt' ? 'bg-blue-600' :
+                                          tag.category === 'Delaminering' ? 'bg-orange-600' :
+                                          tag.category === 'Misfarging' ? 'bg-amber-600' : 'bg-emerald-600'
+                                        }`}>
+                                          {idx + 1}
+                                        </span>
+                                        <div className="text-xs">
+                                          <span className="font-bold text-slate-800">{tag.category}: </span>
+                                          <span className="text-slate-600">{tag.label}</span>
+                                          <span className="text-[9px] text-slate-400 ml-1.5 font-mono">({tag.x}%, {tag.y}%)</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveTag(tag.id)}
+                                          className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors ml-1 cursor-pointer"
+                                          title="Fjern merkelapp"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -2656,16 +3464,27 @@ export default function App() {
                               <span className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
                                 <Flame className="w-4 h-4 text-amber-700" /> Brannmotstand (ISO 1182)
                               </span>
-                              <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-900 rounded-md font-bold font-mono">
-                                Klasse {activeMaterial.testResults?.fireRating || 'Ikke målt'}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {activeMaterial.testResults?.provenFireMark && (
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded font-bold flex items-center gap-1">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
+                                    <span>Akkreditert</span>
+                                  </span>
+                                )}
+                                <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-900 rounded-md font-bold font-mono">
+                                  Klasse {activeMaterial.testResults?.fireRating || 'Ikke målt'}
+                                </span>
+                              </div>
                             </div>
                             <p className="text-xs text-gray-700 leading-relaxed">
                               {activeMaterial.testResults?.fire}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#eeede6]/80 text-[10px] text-gray-500 font-medium">
-                            Status: Brannegenskaper bekreftet i vertikal branntestovn.
+                          <div className="mt-4 pt-3 border-t border-[#eeede6]/80 text-[10px] text-gray-500 font-medium flex justify-between items-center">
+                            <span>Status: Brannegenskaper bekreftet i vertikal branntestovn.</span>
+                            {activeMaterial.testResults?.provenFireMark && (
+                              <span className="text-emerald-800 font-bold font-mono text-[9px]">NS-EN 13501-1</span>
+                            )}
                           </div>
                         </div>
 
@@ -2676,16 +3495,27 @@ export default function App() {
                               <span className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
                                 <Droplets className="w-4 h-4 text-blue-700" /> Fuktoppførsel (EN ISO 12571)
                               </span>
-                              <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-900 rounded-md font-bold">
-                                Dampåpen
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {activeMaterial.testResults?.provenMoistureMark && (
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded font-bold flex items-center gap-1">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
+                                    <span>Akkreditert</span>
+                                  </span>
+                                )}
+                                <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-900 rounded-md font-bold">
+                                  Dampåpen
+                                </span>
+                              </div>
                             </div>
                             <p className="text-xs text-gray-700 leading-relaxed">
                               {activeMaterial.testResults?.moisture}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#eeede6]/80 text-[10px] text-gray-500 font-medium">
-                            Karakter: Fungerer som fuktbuffer i lukkede rom.
+                          <div className="mt-4 pt-3 border-t border-[#eeede6]/80 text-[10px] text-gray-500 font-medium flex justify-between items-center">
+                            <span>Karakter: Fungerer som fuktbuffer i lukkede rom.</span>
+                            {activeMaterial.testResults?.provenMoistureMark && (
+                              <span className="text-emerald-800 font-bold font-mono text-[9px]">ISO 12571 & ISO 8301</span>
+                            )}
                           </div>
                         </div>
 
@@ -2696,9 +3526,17 @@ export default function App() {
                               <span className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-1.5">
                                 <Cpu className="w-4 h-4 text-stone-700" /> Trykk- & Strekkfasthet
                               </span>
-                              <span className="text-[10px] px-2 py-0.5 bg-stone-200 text-stone-900 rounded-md font-bold font-mono">
-                                {activeMaterial.testResults?.strengthMpa ? `${activeMaterial.testResults.strengthMpa} MPa` : 'N/A'}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {activeMaterial.testResults?.provenStrengthMark && (
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded font-bold flex items-center gap-1">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
+                                    <span>Akkreditert</span>
+                                  </span>
+                                )}
+                                <span className="text-[10px] px-2 py-0.5 bg-stone-200 text-stone-900 rounded-md font-bold font-mono">
+                                  {activeMaterial.testResults?.strengthMpa ? `${activeMaterial.testResults.strengthMpa} MPa` : 'N/A'}
+                                </span>
+                              </div>
                             </div>
                             <p className="text-xs text-gray-700 leading-relaxed mb-4">
                               {activeMaterial.testResults?.strength}
@@ -2732,21 +3570,111 @@ export default function App() {
                               <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
                                 <ShieldAlert className="w-4 h-4 text-emerald-700" /> Biologisk Bestandighet & Forringelse
                               </span>
-                              <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-bold font-mono">
-                                {activeMaterial.testResults?.durabilityYears || 25} År
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {activeMaterial.testResults?.provenDurabilityMark && (
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded font-bold flex items-center gap-1">
+                                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
+                                    <span>Akkreditert</span>
+                                  </span>
+                                )}
+                                <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded-md font-bold font-mono">
+                                  {activeMaterial.testResults?.durabilityYears || 25} År
+                                </span>
+                              </div>
                             </div>
                             <p className="text-xs text-gray-700 leading-relaxed">
                               {activeMaterial.testResults?.durability}
                             </p>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[#eeede6]/80 text-[10px] text-gray-500 font-medium">
-                            Risiko: Redusert bestandighet ved permanent vannmetning.
+                          <div className="mt-4 pt-3 border-t border-[#eeede6]/80 text-[10px] text-gray-500 font-medium flex justify-between items-center">
+                            <span>Risiko: Redusert bestandighet ved permanent vannmetning.</span>
+                            {activeMaterial.testResults?.provenDurabilityMark && (
+                              <span className="text-emerald-800 font-bold font-mono text-[9px]">NS-EN 350 / ISO 846</span>
+                            )}
                           </div>
                         </div>
 
                       </div>
                     </div>
+
+                    {/* Akkrediterte Prøvingsnormer & Verifiseringsbevis Dossier */}
+                    {activeMaterial.provenTesting?.isVerified && (
+                      <div className="bg-linear-to-br from-[#f8fafc] via-white to-emerald-50/30 rounded-2xl p-6 border border-emerald-200/80 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#e2e8f0] pb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center shadow-xs">
+                              <Award className="w-5 h-5 text-amber-200" />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                <span>Akkrediteringsbevis & Prøvingsnormer</span>
+                                <span className="text-[9px] bg-emerald-100 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded font-black">
+                                  {activeMaterial.provenTesting.tier}
+                                </span>
+                              </h3>
+                              <p className="text-[11px] text-slate-600">
+                                Offisiell verifikasjon fra <strong>{activeMaterial.provenTesting.testingLab}</strong> • Akkrediteringsnr: <span className="font-mono font-bold text-slate-800">{activeMaterial.provenTesting.accreditationNumber}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setShowProvenModal(true)}
+                            className="bg-emerald-900 hover:bg-emerald-950 text-white text-xs font-bold py-2 px-4 rounded-xl transition-all shadow-xs flex items-center gap-2 shrink-0 cursor-pointer"
+                          >
+                            <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                            <span>Vis Fullt Sertifikat</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                            <span className="text-[9px] uppercase font-bold text-slate-500 block">Repeterbarhet & Konfidens</span>
+                            <div className="text-lg font-serif italic font-bold text-emerald-900 mt-0.5">
+                              {activeMaterial.provenTesting.reproducibilityScore}%
+                            </div>
+                            <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                              {activeMaterial.provenTesting.confidenceInterval}
+                            </span>
+                          </div>
+
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                            <span className="text-[9px] uppercase font-bold text-slate-500 block">Sertifisert Inspektør</span>
+                            <div className="text-sm font-bold text-slate-800 mt-1">
+                              {activeMaterial.provenTesting.leadInspector}
+                            </div>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">
+                              Verifisert: {activeMaterial.provenTesting.verifiedDate}
+                            </span>
+                          </div>
+
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                            <span className="text-[9px] uppercase font-bold text-slate-500 block">Nasjonale & Europeiske Standarder</span>
+                            <div className="text-sm font-bold text-emerald-800 mt-1">
+                              {activeMaterial.provenTesting.passedStandards.length} beståtte standarder
+                            </div>
+                            <span className="text-[10px] text-slate-500 block mt-0.5">
+                              NS-EN, ISO & Nordiske tester
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                            Akkrediterte Standardnormer som er verifisert i laboratoriet:
+                          </span>
+                          <div className="flex flex-wrap gap-2">
+                            {activeMaterial.provenTesting.passedStandards.map((std, i) => (
+                              <div key={i} className="flex items-center gap-1.5 bg-white border border-emerald-300 text-emerald-950 px-3 py-1 rounded-lg text-xs font-semibold shadow-2xs">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="font-mono">{std}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Possible application areas (Mulige bruksområder) */}
                     <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs">
@@ -3712,6 +4640,333 @@ export default function App() {
                       </div>
 
                     </div>
+
+                    {/* ================= TIDSLINJEVISNING FOR ALLE LAGREDE TESTRESULTATER ================= */}
+                    <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs space-y-6">
+                      
+                      {/* Section Header */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#eeede6] pb-4">
+                        <div>
+                          <h3 className="text-sm font-bold uppercase tracking-wider text-[#5A5A40] flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-[#5A5A40]" />
+                            Tidslinjevisning for Testresultater & Laboratorieutvikling
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Kronologisk oversikt over alle registrerte lab-målinger, foto-sammenligninger, eksperiment-milepæler og AI-tilstandsanalyser for <strong className="text-gray-800">{activeMaterial?.name}</strong>.
+                          </p>
+                        </div>
+
+                        {/* Quick Stats Pill */}
+                        {activeMaterial && (() => {
+                          const allEvts = getTimelineEventsForMaterial(activeMaterial);
+                          const mCount = allEvts.filter(e => e.type === 'maling').length;
+                          const pCount = allEvts.filter(e => e.type === 'foto' || e.type === 'ai_analyse').length;
+                          const kCount = allEvts.filter(e => e.type === 'milepel').length;
+                          return (
+                            <div className="flex items-center gap-2 bg-[#f9f9f7] p-2 rounded-xl border border-[#eeede6] text-[11px] font-semibold text-gray-700 shrink-0">
+                              <span className="flex items-center gap-1 text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                <Activity className="w-3 h-3" /> {mCount} Målinger
+                              </span>
+                              <span className="flex items-center gap-1 text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                <Camera className="w-3 h-3" /> {pCount} Bilder
+                              </span>
+                              <span className="flex items-center gap-1 text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                                <Beaker className="w-3 h-3" /> {kCount} Milepæler
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Controls Bar: Filters, Search & Sort */}
+                      {activeMaterial && (() => {
+                        const rawEvents = getTimelineEventsForMaterial(activeMaterial);
+
+                        // Filter by type
+                        let filtered = rawEvents.filter(evt => {
+                          if (timelineFilter === 'malinger') return evt.type === 'maling';
+                          if (timelineFilter === 'foto') return evt.type === 'foto' || evt.type === 'ai_analyse';
+                          if (timelineFilter === 'milepeler') return evt.type === 'milepel';
+                          if (timelineFilter === 'logger') return evt.type === 'logger';
+                          return true;
+                        });
+
+                        // Filter by search
+                        if (timelineSearchTerm.trim() !== '') {
+                          const q = timelineSearchTerm.toLowerCase();
+                          filtered = filtered.filter(e =>
+                            e.title.toLowerCase().includes(q) ||
+                            e.description.toLowerCase().includes(q) ||
+                            e.date.toLowerCase().includes(q) ||
+                            (e.subtitle && e.subtitle.toLowerCase().includes(q)) ||
+                            (e.badgeText && e.badgeText.toLowerCase().includes(q)) ||
+                            (e.experimentTitle && e.experimentTitle.toLowerCase().includes(q))
+                          );
+                        }
+
+                        // Sort by timestamp
+                        filtered.sort((a, b) => {
+                          if (timelineSortOrder === 'desc') return b.timestampMs - a.timestampMs;
+                          return a.timestampMs - b.timestampMs;
+                        });
+
+                        return (
+                          <div className="space-y-6">
+                            
+                            {/* Toolbar */}
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#fcfcf9] p-3 rounded-2xl border border-[#e2e1d5]">
+                              
+                              {/* Filter Buttons */}
+                              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setTimelineFilter('alle')}
+                                  className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                                    timelineFilter === 'alle'
+                                      ? 'bg-[#5A5A40] text-white shadow-xs'
+                                      : 'bg-white text-gray-600 hover:bg-stone-100 border border-slate-200'
+                                  }`}
+                                >
+                                  Alle ({rawEvents.length})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTimelineFilter('malinger')}
+                                  className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                                    timelineFilter === 'malinger'
+                                      ? 'bg-emerald-800 text-white shadow-xs'
+                                      : 'bg-white text-gray-600 hover:bg-emerald-50 border border-slate-200'
+                                  }`}
+                                >
+                                  <Activity className="w-3.5 h-3.5" />
+                                  Lab-målinger ({rawEvents.filter(e => e.type === 'maling').length})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTimelineFilter('foto')}
+                                  className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                                    timelineFilter === 'foto'
+                                      ? 'bg-blue-800 text-white shadow-xs'
+                                      : 'bg-white text-gray-600 hover:bg-blue-50 border border-slate-200'
+                                  }`}
+                                >
+                                  <Camera className="w-3.5 h-3.5" />
+                                  Foto & AI ({rawEvents.filter(e => e.type === 'foto' || e.type === 'ai_analyse').length})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTimelineFilter('milepeler')}
+                                  className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                                    timelineFilter === 'milepeler'
+                                      ? 'bg-purple-800 text-white shadow-xs'
+                                      : 'bg-white text-gray-600 hover:bg-purple-50 border border-slate-200'
+                                  }`}
+                                >
+                                  <Beaker className="w-3.5 h-3.5" />
+                                  Milepæler ({rawEvents.filter(e => e.type === 'milepel').length})
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTimelineFilter('logger')}
+                                  className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
+                                    timelineFilter === 'logger'
+                                      ? 'bg-stone-800 text-white shadow-xs'
+                                      : 'bg-white text-gray-600 hover:bg-stone-100 border border-slate-200'
+                                  }`}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  Notater ({rawEvents.filter(e => e.type === 'logger').length})
+                                </button>
+                              </div>
+
+                              {/* Search & Sort Controls */}
+                              <div className="flex items-center gap-2">
+                                <div className="relative flex-1 sm:w-48">
+                                  <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" />
+                                  <input
+                                    type="text"
+                                    placeholder="Søk i tidslinjen..."
+                                    value={timelineSearchTerm}
+                                    onChange={(e) => setTimelineSearchTerm(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl py-1.5 pl-8 pr-3 text-xs focus:outline-none focus:border-[#5A5A40]"
+                                  />
+                                  {timelineSearchTerm && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setTimelineSearchTerm('')}
+                                      className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setTimelineSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                                  className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-xl transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                                  title="Endre rekkefølge"
+                                >
+                                  {timelineSortOrder === 'desc' ? (
+                                    <>
+                                      <TrendingDown className="w-3.5 h-3.5 text-[#5A5A40]" />
+                                      <span>Nyeste først</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TrendingUp className="w-3.5 h-3.5 text-[#5A5A40]" />
+                                      <span>Eldste først</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+
+                            </div>
+
+                            {/* Timeline Visual Stream */}
+                            {filtered.length === 0 ? (
+                              <div className="p-8 text-center border border-dashed border-slate-200 rounded-2xl bg-[#fdfdfb] text-xs text-slate-500">
+                                <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                <p className="font-semibold text-slate-700">Ingen testresultater eller hendelser samsvarte med gjeldende søk/filter.</p>
+                                <p className="text-[11px] text-slate-400 mt-1">Prøv å velge 'Alle' eller fjern søkeordet for å se hele tidslinjen.</p>
+                              </div>
+                            ) : (
+                              <div className="relative border-l-2 border-[#e2e1d5] ml-4 sm:ml-6 space-y-6 py-2">
+                                {filtered.map((evt) => (
+                                  <div key={evt.id} className="relative pl-6 sm:pl-8 group">
+                                    
+                                    {/* Timeline Node Badge Icon */}
+                                    <div className={`absolute -left-[17px] sm:-left-[21px] top-1.5 w-8 h-8 rounded-full border-2 border-white shadow-xs flex items-center justify-center shrink-0 z-10 ${
+                                      evt.type === 'maling' ? 'bg-emerald-700 text-white' :
+                                      evt.type === 'foto' ? 'bg-blue-700 text-white' :
+                                      evt.type === 'ai_analyse' ? 'bg-purple-700 text-white' :
+                                      evt.type === 'milepel' ? 'bg-[#5A5A40] text-white' :
+                                      'bg-slate-700 text-white'
+                                    }`}>
+                                      {evt.iconType === 'activity' && <Activity className="w-4 h-4" />}
+                                      {evt.iconType === 'camera' && <Camera className="w-4 h-4" />}
+                                      {evt.iconType === 'beaker' && <Beaker className="w-4 h-4" />}
+                                      {evt.iconType === 'check' && <CheckCircle className="w-4 h-4" />}
+                                      {evt.iconType === 'file' && <FileText className="w-4 h-4" />}
+                                      {evt.iconType === 'sparkles' && <Sparkles className="w-4 h-4" />}
+                                      {evt.iconType === 'flame' && <Flame className="w-4 h-4" />}
+                                      {evt.iconType === 'award' && <Award className="w-4 h-4" />}
+                                      {evt.iconType === 'droplets' && <Droplets className="w-4 h-4" />}
+                                    </div>
+
+                                    {/* Event Card */}
+                                    <div className="bg-[#fcfcf9] hover:bg-white border border-[#e2e1d5] hover:border-[#5A5A40]/40 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all space-y-2.5">
+                                      
+                                      {/* Event Meta Header */}
+                                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eeede6] pb-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${evt.badgeBg} ${evt.badgeTextColor}`}>
+                                            {evt.badgeText}
+                                          </span>
+                                          {evt.subtitle && (
+                                            <span className="text-[11px] font-semibold text-slate-500">
+                                              {evt.subtitle}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <div className="flex items-center gap-1 text-[11px] font-mono font-bold text-slate-600 bg-white px-2.5 py-0.5 rounded-lg border border-slate-200">
+                                          <Clock className="w-3 h-3 text-[#5A5A40]" />
+                                          <span>{evt.date}</span>
+                                        </div>
+                                      </div>
+
+                                      {/* Event Main Title */}
+                                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                                        {evt.title}
+                                      </h4>
+
+                                      {/* Description */}
+                                      <p className="text-xs text-slate-700 leading-relaxed">
+                                        {evt.description}
+                                      </p>
+
+                                      {/* Measurement Highlight Box */}
+                                      {evt.type === 'maling' && evt.valueStr && (
+                                        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-3 flex items-center justify-between gap-3 mt-1">
+                                          <div className="flex items-center gap-2">
+                                            <div className="p-1.5 bg-emerald-700 text-white rounded-lg">
+                                              <Activity className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                              <span className="text-[10px] uppercase font-bold text-emerald-900 block">Registrert Testpunkt</span>
+                                              <span className="text-xs font-bold text-emerald-950">{evt.subtitle}</span>
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            <span className="text-base font-bold font-serif text-emerald-900">{evt.valueStr}</span>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Photo & Image Comparison Preview */}
+                                      {(evt.imageUrl || evt.refImageUrl) && (
+                                        <div className="mt-2 space-y-2">
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-[#f0f4f8] p-2 rounded-xl border border-slate-200">
+                                            {evt.refImageUrl && (
+                                              <div className="relative rounded-lg overflow-hidden border border-slate-300 aspect-video group/img bg-slate-900">
+                                                <img
+                                                  src={evt.refImageUrl}
+                                                  alt="Referanse (Før)"
+                                                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
+                                                />
+                                                <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">
+                                                  FØR (Referanse)
+                                                </span>
+                                              </div>
+                                            )}
+
+                                            {evt.imageUrl && (
+                                              <div
+                                                onClick={() => setSelectedTimelinePhoto({
+                                                  url: evt.imageUrl!,
+                                                  refUrl: evt.refImageUrl,
+                                                  title: evt.title,
+                                                  desc: evt.description,
+                                                  date: evt.date,
+                                                  experimentTitle: evt.experimentTitle
+                                                })}
+                                                className={`relative rounded-lg overflow-hidden border border-purple-300 aspect-video group/img bg-slate-900 cursor-pointer ${
+                                                  !evt.refImageUrl ? 'sm:col-span-2' : ''
+                                                }`}
+                                              >
+                                                <img
+                                                  src={evt.imageUrl}
+                                                  alt="Testresultat (Etter)"
+                                                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
+                                                />
+                                                <span className="absolute top-1.5 left-1.5 bg-purple-900/90 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                                                  <Camera className="w-2.5 h-2.5" />
+                                                  ETTER (Testfoto)
+                                                </span>
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
+                                                  <Search className="w-4 h-4" />
+                                                  <span>Klikk for forstørrelse</span>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                    </div>
+
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                          </div>
+                        );
+                      })()}
+
+                    </div>
+
                   </div>
                 )}
 
@@ -4205,6 +5460,192 @@ export default function App() {
                 className="text-stone-400 hover:text-white transition-all underline decoration-dotted"
               >
                 Lukk forhåndsvisning
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= LIGHTBOX MODAL FOR TIMELINE PHOTOS ================= */}
+      {selectedTimelinePhoto && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-purple-700" />
+                  {selectedTimelinePhoto.title}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Dato: {selectedTimelinePhoto.date} {selectedTimelinePhoto.experimentTitle ? `• Forsøk: ${selectedTimelinePhoto.experimentTitle}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTimelinePhoto(null)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900 p-3 rounded-xl">
+              {selectedTimelinePhoto.refUrl && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">FØR (Referanse)</span>
+                  <div className="aspect-video rounded-lg overflow-hidden border border-slate-700">
+                    <img src={selectedTimelinePhoto.refUrl} alt="Referanse Før" className="w-full h-full object-cover" />
+                  </div>
+                </div>
+              )}
+              <div className={`space-y-1 ${!selectedTimelinePhoto.refUrl ? 'md:col-span-2' : ''}`}>
+                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider block">ETTER (Testbilde)</span>
+                <div className="aspect-video rounded-lg overflow-hidden border border-purple-500/50">
+                  <img src={selectedTimelinePhoto.url} alt="Testfoto Etter" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">Beskrivelse / Notater:</span>
+              <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                {selectedTimelinePhoto.desc}
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedTimelinePhoto(null)}
+                className="bg-[#5A5A40] text-white text-xs font-bold py-2 px-5 rounded-xl hover:bg-[#4a4a34] transition-colors cursor-pointer"
+              >
+                Lukk visning
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= PROVEN TESTING CERTIFICATION & ATTEST MODAL ================= */}
+      {showProvenModal && activeMaterial?.provenTesting && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 md:p-8 shadow-2xl border border-emerald-300/80 relative space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Header with official stamp */}
+            <div className="flex items-start justify-between border-b border-[#e2e8f0] pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shadow-md shrink-0">
+                  <ShieldCheck className="w-7 h-7 text-emerald-200" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800">
+                    Offisiell Prøvingsattest & Akkrediteringsbevis
+                  </span>
+                  <h3 className="text-lg font-serif italic font-bold text-slate-950">
+                    {activeMaterial.name}
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    Akkreditering: <span className="font-mono font-bold text-emerald-950">{activeMaterial.provenTesting.accreditationNumber}</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowProvenModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Certificate Body Container */}
+            <div className="bg-linear-to-b from-emerald-50/50 via-white to-stone-50/50 p-5 rounded-2xl border border-emerald-200/90 space-y-4">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Sertifiseringsnivå & Akkrediteringsorgan
+                </span>
+                <span className={`text-xs font-black uppercase px-3 py-1 rounded-lg shadow-2xs ${
+                  activeMaterial.provenTesting.badgeLevel === 'PLATINUM'
+                    ? 'bg-slate-900 text-white'
+                    : activeMaterial.provenTesting.badgeLevel === 'GOLD'
+                    ? 'bg-amber-400 text-amber-950 border border-amber-500'
+                    : activeMaterial.provenTesting.badgeLevel === 'EMERALD'
+                    ? 'bg-emerald-800 text-white'
+                    : 'bg-stone-300 text-stone-900'
+                }`}>
+                  {activeMaterial.provenTesting.tier} • {activeMaterial.provenTesting.badgeLevel}
+                </span>
+              </div>
+
+              {/* Inspector & Lab info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Testlaboratorium:</span>
+                  <span className="font-bold text-slate-900">{activeMaterial.provenTesting.testingLab}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Fagansvarlig / Inspektør:</span>
+                  <span className="font-bold text-slate-900">{activeMaterial.provenTesting.leadInspector}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Verifiseringsdato:</span>
+                  <span className="font-bold text-slate-900">{activeMaterial.provenTesting.verifiedDate}</span>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Repeterbarhetsscore:</span>
+                  <span className="font-bold text-emerald-800">{activeMaterial.provenTesting.reproducibilityScore}% ({activeMaterial.provenTesting.confidenceInterval})</span>
+                </div>
+              </div>
+
+              {/* Passed standard norms table */}
+              <div className="pt-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+                  Bekreftede og Prøvde Standarder (Pass / Approved):
+                </span>
+                <div className="space-y-1.5">
+                  {activeMaterial.provenTesting.passedStandards.map((std, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-emerald-200/80 shadow-2xs text-xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="font-mono font-bold text-slate-900">{std}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded uppercase">
+                        Godkjent
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Official Seal / Signature Note */}
+              <div className="p-3 bg-white/90 rounded-xl border border-dashed border-emerald-300 text-[11px] text-slate-600 flex items-center justify-between">
+                <span>Dokumentet er digitalt signert og lagret i BioBuild Nordic Material Registry.</span>
+                <span className="font-mono text-[9px] text-emerald-800 font-bold">VERIFIED_HASH_SHA256</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const owner = researchers.find(r => r.id === activeMaterial.ownerId);
+                    generateMaterialPDFReport(activeMaterial, owner);
+                  }}
+                  className="flex-1 sm:flex-none bg-[#5A5A40] hover:bg-[#4a4a34] text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-amber-200" />
+                  <span>Last ned Full Attest (PDF)</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowProvenModal(false)}
+                className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold py-2.5 px-5 rounded-xl transition-colors cursor-pointer"
+              >
+                Lukk
               </button>
             </div>
           </div>

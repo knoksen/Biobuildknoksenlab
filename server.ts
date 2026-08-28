@@ -194,7 +194,7 @@ async function urlToBase64(url: string): Promise<{ mimeType: string; data: strin
 // 1b. Visuell Gemini Analyse av Materialintegritet
 app.post('/api/gemini/analyze-image', async (req, res) => {
   try {
-    const { capturedImage, referenceImage, materialName, model } = req.body;
+    const { capturedImage, referenceImage, materialName, model, imageTags } = req.body;
     if (!capturedImage) {
       return res.status(400).json({ error: 'Fangede testbilde er påkrevd.' });
     }
@@ -248,11 +248,18 @@ app.post('/api/gemini/analyze-image', async (req, res) => {
       }
     }
 
+    let tagsNotice = '';
+    if (Array.isArray(imageTags) && imageTags.length > 0) {
+      tagsNotice = `\nForskeren har manuelt merket følgende områder/avvik på testbildet:\n` +
+        imageTags.map((t: any, i: number) => `- Merkelapp #${i + 1} (${t.category || 'Avvik'}): "${t.label}" plassert ved koordinater x=${Math.round(t.x)}%, y=${Math.round(t.y)}%`).join('\n') +
+        `\nVennligst analyser disse spesifikke områdene nøye i samspill med resten av bildet.\n`;
+    }
+
     const promptText = `Du er en ledende laboratorie-spesialist på mikroskopi, materialfasthet og strukturell feilanalyse for bio-baserte bygningsmaterialer ved BioBuild Norge.
 
 Du har mottatt bilde(r) av testresultat for materialet "${materialName || 'Bio-materiale'}".
 ${referenceImage ? 'Du har både et referansebilde (Før-tilstand) og et nytt testbilde (Etter-påkjenning).' : 'Du har mottatt et nytt testbilde av prøvestykket.'}
-
+${tagsNotice}
 Vennligst gjennomfør en grundig visuell analyse av materialets integritet og oppdag eventuelle mikrosprekker, fuktmerker, delaminering, fargeendring eller biologisk nedbrytning.
 
 Returner svaret på NORSK i strikt JSON-format med følgende felter:

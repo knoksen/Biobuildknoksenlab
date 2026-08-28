@@ -28,6 +28,20 @@ export interface Experiment {
   results?: string;
 }
 
+export interface ProvenTestingMark {
+  isVerified: boolean;
+  tier: 'SINTEF Verified' | 'RISE Accredited' | 'BioBuild Certified' | 'ISO/EN Standard' | 'Nordic Field Proven';
+  accreditationNumber: string;
+  verifiedDate: string;
+  laboratory: string;
+  leadInspector: string;
+  reproducibilityScore: number; // 0-100%
+  confidenceInterval: string;
+  passedStandards: string[];
+  auditReportUrl?: string;
+  badgeLevel: 'Gold' | 'Platinum' | 'Silver' | 'Emerald';
+}
+
 export interface BioMaterial {
   id: string;
   name: string;
@@ -38,6 +52,7 @@ export interface BioMaterial {
   trl: number; // 1 to 9
   applicationAreas: string[];
   suppliers: string[];
+  provenTesting?: ProvenTestingMark;
   epd: {
     gwp: number; // kg CO2 eq/kg
     recycledContent: number; // %
@@ -52,6 +67,10 @@ export interface BioMaterial {
     fireRating?: string; // f.eks. "B-s1, d0"
     strengthMpa?: number; // Strekk/trykk-styrke i MPa
     durabilityYears?: number; // Forventet levetid i tøffe miljøer
+    provenFireMark?: boolean;
+    provenMoistureMark?: boolean;
+    provenStrengthMark?: boolean;
+    provenDurabilityMark?: boolean;
   };
   healthRisk: string;
   articles: ResearchArticle[];
@@ -81,3 +100,12 @@ export interface Researcher {
   successRate: number;
   bio: string;
 }
+
+export interface ImageTag {
+  id: string;
+  x: number; // 0-100 percentage
+  y: number; // 0-100 percentage
+  label: string;
+  category: 'Sprekk' | 'Fukt' | 'Delaminering' | 'Misfarging' | 'Generelt';
+}
+

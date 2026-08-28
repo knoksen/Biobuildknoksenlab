@@ -12,6 +12,23 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 6,
     applicationAreas: ['Innvendig isolasjon', 'Akustisk demping', 'Emballasje', 'Ikke-bærende fyllvegger'],
     suppliers: ['Ecovative Design', 'NTNU Biopolymer Lab', 'BioBuild Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-MYC01',
+      verifiedDate: '2026-06-15',
+      laboratory: 'SINTEF Byggforsk & NTNU Biopolymer Lab',
+      leadInspector: 'Dr. Marianne Jensen (Sertifisert Kontrollør)',
+      reproducibilityScore: 98.4,
+      confidenceInterval: '95% KI (± 0.04)',
+      passedStandards: [
+        'NS-EN 13501-1 (Brannklasse B-s1, d0)',
+        'ISO 12571 (Hygroskopisk fuktbuffer)',
+        'ISO 8301 (Termisk konduktivitet lambda 0.038 W/mK)',
+        'ISO 14044 (Miljødeklarasjon EPD)'
+      ],
+      badgeLevel: 'Gold'
+    },
     epd: {
       gwp: -1.2, // Karbonnegativt!
       recycledContent: 92,
@@ -25,7 +42,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'God holdbarhet i tørre konstruksjoner. Muggresistent ved normal luftfuktighet, men brytes ned ved permanent vannmetning over 90 dager.',
       fireRating: 'B-s1, d0',
       strengthMpa: 0.2,
-      durabilityYears: 40
+      durabilityYears: 40,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: false,
+      provenDurabilityMark: true
     },
     healthRisk: 'Null VOC-utslipp. Svært allergivennlig. Levende sporer er 100% inaktivert via varmebehandling på 85°C før installasjon.',
     articles: [
@@ -90,6 +111,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 8,
     applicationAreas: ['Yttervegger (støpt eller sprøytet)', 'Isolerende gulvunderlag', 'Takisolering', 'Pussing og rehabilitering'],
     suppliers: ['Hampbygg AS', 'Tradical France', 'SINTEF Community'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'RISE Accredited',
+      accreditationNumber: 'NO-RISE-2026-HMP18',
+      verifiedDate: '2026-04-12',
+      laboratory: 'RISE Fire & Safety Lab Trondheim',
+      leadInspector: 'Dr. Sindre Vanebo & Dr. Johan Dahl',
+      reproducibilityScore: 99.1,
+      confidenceInterval: '99% KI (± 0.01)',
+      passedStandards: [
+        'NS-EN 1365-1 (Brannmotstandsprøving for Bærende Vegger - EI 120)',
+        'NS-EN ISO 12572 (Bygningsmaterialers Fuktoverføringsegenskaper)',
+        'ISO 9869 (Varmegjennomgangskoeffisient in-situ U-verdi)'
+      ],
+      badgeLevel: 'Platinum'
+    },
     epd: {
       gwp: -1.6, // Binder mer CO2 enn det slipper ut i livsløpet!
       recycledContent: 85,
@@ -103,7 +140,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Uforgjengelig over tid. Kalken fortsetter å karbonisere (absorbere CO2) over tiår, noe som gjør veggen hardere og sterkere med alderen.',
       fireRating: 'Class B-s1, d0 / EI 120 brannmur',
       strengthMpa: 0.8,
-      durabilityYears: 100
+      durabilityYears: 100,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: false,
+      provenDurabilityMark: true
     },
     healthRisk: 'Ingen farlige utslipp eller kjemikalier. Kalken hindrer naturlig vekst av mugg og sopp. Svært godt inneklima.',
     articles: [
@@ -155,6 +196,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 7,
     applicationAreas: ['Underjordiske murer', 'Tunneler og kjellere', 'Vindmøllefundamenter', 'Utsatte fasader i kyststrøk'],
     suppliers: ['TU Delft Concrete Lab', 'BioMason Inc', 'Heidelberg Materials Norge'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'ISO/EN Standard',
+      accreditationNumber: 'NO-ISO-2026-BAC42',
+      verifiedDate: '2026-05-20',
+      laboratory: 'SINTEF Structural Materials Lab & TU Delft Lab',
+      leadInspector: 'Prof. Lars Solberg & Dr. Jonkers',
+      reproducibilityScore: 97.9,
+      confidenceInterval: '95% KI (± 0.03)',
+      passedStandards: [
+        'NS-EN 12390-3 (Trykkfasthet for Prøvelegemer av Betong)',
+        'RILEM TC 221-SHC (Metoder for Måling av Selvheling i Betong)',
+        'NS-EN 13501-1 (Brannklasse A1 Ubrennbar)'
+      ],
+      badgeLevel: 'Gold'
+    },
     epd: {
       gwp: 320, // Høyere oppstart enn tre, men reduserer vedlikehold drastisk.
       recycledContent: 30,
@@ -168,7 +225,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Enestående levetid. Bakteriesporene kan overleve i dvaletilstand i opptil 200 år inni betongmatrisen, klare til å tette fremtidige sprekker.',
       fireRating: 'Klasse A1',
       strengthMpa: 42,
-      durabilityYears: 150
+      durabilityYears: 150,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
     },
     healthRisk: 'Bakteriene er helt ufarlige for mennesker (Patogenitetsklasse 1). Ingen giftige utslipp under hele livsløpet.',
     articles: [
@@ -217,6 +278,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 9,
     applicationAreas: ['Bærende yttervegger', 'Etasjeskillere', 'Passivhus-fasader', 'Eksponerte takkonstruksjoner'],
     suppliers: ['Moelven Wood AS', 'Splitkon AS', 'Amorim Cork Composites'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-CLT04',
+      verifiedDate: '2026-05-18',
+      laboratory: 'SINTEF Byggforsk & Moelven Teknologisenter',
+      leadInspector: 'Dr. Johan Dahl (Teknisk Kontroll)',
+      reproducibilityScore: 99.5,
+      confidenceInterval: '99% KI (± 0.005)',
+      passedStandards: [
+        'NS-EN 16351 (Trekonstruksjoner - Massivtre / CLT)',
+        'NS-EN 350 (Holdbarhet mot Råtesopp - Klasse 1-2)',
+        'NS-EN 13501-1 (Brannmotstand REI 90)'
+      ],
+      badgeLevel: 'Platinum'
+    },
     epd: {
       gwp: -1.85,
       recycledContent: 40,
@@ -230,7 +307,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Holdbarhetsklasse 1-2 i henhold til NS-EN 350 (råteresistent i over 60 år uten overflatebehandling).',
       fireRating: 'REI 90 / B-s1, d0',
       strengthMpa: 24.0,
-      durabilityYears: 80
+      durabilityYears: 80,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
     },
     healthRisk: 'Null formaldehyd eller syntetisk lim. Treet avgir kun naturlige tre-aromaer (terpener). Inneklima i klasse A+.',
     articles: [
@@ -279,6 +360,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 5,
     applicationAreas: ['Blåst hulromsisolasjon', 'Sprøyteisolering for tak', 'Termiske skillevegger', 'Lyddempende himling'],
     suppliers: ['SINTEF Ocean', 'Algea Norway AS', 'NTNU Bioprocess Lab'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'BioBuild Certified',
+      accreditationNumber: 'NO-BIOBUILD-2026-ALG05',
+      verifiedDate: '2026-06-08',
+      laboratory: 'SINTEF Ocean & NTNU Bioprocess Lab',
+      leadInspector: 'Prof. Lars Solberg',
+      reproducibilityScore: 97.2,
+      confidenceInterval: '95% KI (± 0.04)',
+      passedStandards: [
+        'ISO 8301 (Termisk konduktivitet lambda 0.034 W/mK)',
+        'NS-EN 13501-1 (Brannklasse B-s2, d0)',
+        'ISO 16000-9 (VOC Utslippsfri)'
+      ],
+      badgeLevel: 'Emerald'
+    },
     epd: {
       gwp: -2.1,
       recycledContent: 95,
@@ -292,7 +389,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Stabil under innvendige tørre forhold. Unngå direkte UV-eksponering uten belegg.',
       fireRating: 'B-s2, d0',
       strengthMpa: 0.18,
-      durabilityYears: 45
+      durabilityYears: 45,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: false,
+      provenDurabilityMark: true
     },
     healthRisk: 'Helt uten isocyanater, KFK-gasser eller toksiske flammehemmere. Svært rent innemiljø.',
     articles: [
@@ -340,6 +441,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 8,
     applicationAreas: ['Innvendige skillevegger', 'Undertak', 'Lydisolering i etasjeskillere', 'Systemvegger i kontorbygg'],
     suppliers: ['Ekopanely', 'Nordic StrawTech AS', 'BioBuild Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'Nordic Field Proven',
+      accreditationNumber: 'NO-NORDIC-2026-STR06',
+      verifiedDate: '2026-03-14',
+      laboratory: 'NIBIO & SINTEF Byggforsk',
+      leadInspector: 'Dr. Elena Rostova',
+      reproducibilityScore: 98.6,
+      confidenceInterval: '95% KI (± 0.02)',
+      passedStandards: [
+        'NS-EN 1364-1 (Brannmotstandsprøving av Ikke-bærende Vegger - EI 60)',
+        'NS-EN ISO 10140 (Laboratoriemåling av Lydisolasjon i Bygninger)',
+        'NS-EN 310 (Bøyefasthet for Trebaserte Plater)'
+      ],
+      badgeLevel: 'Gold'
+    },
     epd: {
       gwp: -1.4,
       recycledContent: 100,
@@ -353,7 +470,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Tørre konstruksjoner har dokumentert levetid på over 75 år uten deformasjon.',
       fireRating: 'EI 60 / B-s1, d0',
       strengthMpa: 3.8,
-      durabilityYears: 75
+      durabilityYears: 75,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
     },
     healthRisk: '100% naturlig landbruksråvare. Ingen stoffer på OBS-listen. Regulerer relativ luftfuktighet optimalt.',
     articles: [
@@ -388,6 +509,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 6,
     applicationAreas: ['Våtromsbekledning', 'Kjøkkenplater', 'Baderomsinnredning', 'Dekorative slitesterke paneler'],
     suppliers: ['ChitoTech Tromsø', 'NTNU Marin Bioprospektering', 'BioBuild Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-CHT07',
+      verifiedDate: '2026-06-22',
+      laboratory: 'NTNU Marin Bioprospektering & SINTEF Byggforsk',
+      leadInspector: 'Dr. Marianne Jensen',
+      reproducibilityScore: 98.1,
+      confidenceInterval: '95% KI (± 0.03)',
+      passedStandards: [
+        'NS-EN 13501-1 (Brannmotstand B-s1, d0)',
+        'ISO 27448 (Test for overflate-hydrofobi og kontaktvinkel)',
+        'NS-EN 438-2 (Dekorative Høytrykkslaminater - Slitasjemotstand)'
+      ],
+      badgeLevel: 'Gold'
+    },
     epd: {
       gwp: -0.9,
       recycledContent: 98,
@@ -401,7 +538,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Høy ripefasthet og god kjemisk motstand mot milde rengjøringsmidler.',
       fireRating: 'B-s1, d0',
       strengthMpa: 12.0,
-      durabilityYears: 50
+      durabilityYears: 50,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
     },
     healthRisk: '100% biokompatibelt. Allergitestet (proteinrester fra reker er fullstendig fjernet i deacetyleringsprosessen).',
     articles: [
@@ -454,6 +595,22 @@ export const initialBioMaterials: BioMaterial[] = [
     trl: 6,
     applicationAreas: ['Superisolerende vinduskassassetter', 'Slanke fasadepaneler', 'Passive solfangere', 'Kryogene rørisolasjoner'],
     suppliers: ['RISE PFI Trondheim', 'Borregaard Exilva', 'BioBuild Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'RISE Accredited',
+      accreditationNumber: 'NO-RISE-2026-NFC08',
+      verifiedDate: '2026-06-03',
+      laboratory: 'RISE PFI & NTNU Nanofabrikasjon Lab',
+      leadInspector: 'Dr. Anders Lindqvist',
+      reproducibilityScore: 99.3,
+      confidenceInterval: '99% KI (± 0.008)',
+      passedStandards: [
+        'ISO 8302 (Termisk isolasjon - Varmestrømsmåler)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0)',
+        'ISO 15901-2 (Porestørrelse og porøsitet via gassadsorpsjon)'
+      ],
+      badgeLevel: 'Platinum'
+    },
     epd: {
       gwp: -1.95,
       recycledContent: 90,
@@ -467,7 +624,11 @@ export const initialBioMaterials: BioMaterial[] = [
       durability: 'Stabil aerogel-matrise som beholder sine vakuumporer over 60 år i tørre skilleveggmoduler.',
       fireRating: 'B-s1, d0',
       strengthMpa: 0.12,
-      durabilityYears: 60
+      durabilityYears: 60,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: false,
+      provenDurabilityMark: true
     },
     healthRisk: 'Fullstendig giftfri bio-nanoteknologi. Ingen støvemisjon av skadelige mikrofibre etter silan-innkapsling.',
     articles: [
@@ -887,6 +1048,891 @@ export const initialBioMaterials: BioMaterial[] = [
     ],
     measurements: [
       { id: 'm-14-1', timestamp: '2026-07-02', parameter: 'strength', value: 12.0, label: 'Luminans Nødlys (mcd/m2)', experimentTitle: 'Sakte-frigjørende næringskapsler' }
+    ]
+  },
+  {
+    id: 'mat-15',
+    name: 'Rekeskall-Chitosan Bio-Tettingsmembran (ChitoSeal Hydro)',
+    category: 'Annet',
+    ownerId: 'res-9',
+    description: 'Slitesterk, fleksibel og vannfast vindsperre og tettingsmembran basert på bio-kryssoverlenket kitin og chitosan utvunnet fra norsk sjømatavfall (reke- og krabbeskall). Erstatter petrokjemiske polyuretan- og plastmembraner.',
+    chemicalComposition: 'Deacetylert chitosan, sitronsyre kryssoverlenker, linolje-plastifiserer, naturlig silika-fyllstoff.',
+    biologicalComposition: '82% kitin/chitosan fra rekeskall og 18% vegetabilske bio-mykknere.',
+    trl: 7,
+    applicationAreas: ['Vindsperre i trebygninger', 'Våtromsmembraner under flis', 'Tetting rundt vindusbeslag', 'Grønne tak-membraner'],
+    suppliers: ['MareBio Norge AS', 'SINTEF Ocean', 'BioBuild Norge AS'],
+    epd: {
+      gwp: -1.9,
+      recycledContent: 98,
+      lifetime: 50,
+      circularity: '100% biologisk nedbrytbar i kompostering etter endt levetid.'
+    },
+    testResults: {
+      fire: 'Chitosan danner en naturlig brent karbonskorpe ved flammepåvirkning som hemmer brannspredning.',
+      moisture: 'Vannadamptett (Sd-verdi > 50m) og tåler kontinuerlig vanntrykk opp til 3.5 bar.',
+      strength: 'Strekkfasthet 24.5 MPa, bruddforlengelse 180%.',
+      durability: 'Uforandret vannfasthet etter 1000 timers akselerert fukt- og UV- aldring.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 24.5,
+      durabilityYears: 50
+    },
+    healthRisk: 'Null VOC-utslipp, ugiftig og naturnær overflate helt fri for ftalater og microplast.',
+    articles: [
+      {
+        id: 'art-15-1',
+        title: 'Chitosan-based bio-membranes for sustainable building envelope waterproofing',
+        authors: 'Vanebo, S., Amundsen, H. & Jensen, M.',
+        year: 2025,
+        journal: 'Journal of Cleaner Production',
+        summary: 'Kvantifisering av vannbarrierens effektivitet og elastisitet for kitin-baserte tettingsfolier.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-15-1',
+        question: 'Hvordan reagerer membranen ved langvarig kontakt med ekstremt alkaliske betongoverflater?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-15-1',
+        title: 'Alkalisk motstandstest av ChitoSeal på ung betong',
+        hypothesis: 'Kryssoverlenking med sitronsyre hindrer hydrolyse ved pH 12.5 i minst 90 dager.',
+        independentVariable: 'pH-verdi i eksponeringsbad (pH 9, pH 11, pH 12.5)',
+        dependentVariable: 'Strekkfasthet (MPa) og masseendring over tid',
+        status: 'Aktiv',
+        startDate: '2026-06-05',
+        logs: [
+          '05.06.2026: Senket 18 teststrimler i alkalisk bad på kjemilaben.',
+          '20.07.2026: Målte 95% opprettholdt strekkfasthet etter 45 dager.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-15-1', timestamp: '2026-07-21', parameter: 'strength', value: 24.5, label: 'Strekkfasthet Membran (MPa)', experimentTitle: 'Alkalisk motstandstest' }
+    ]
+  },
+  {
+    id: 'mat-16',
+    name: 'Kullsopp Brannisolerende Mycel-Skumblokker (Daldinia ThermoFoam)',
+    category: 'Mykologiske',
+    ownerId: 'res-1',
+    description: 'Nyskapende brannsikkert isolasjonsskum oppbygd av mycelnettverk fra kullsopp (Daldinia concentrica) grodd på pyrolysert trespon og bio-kull. Gir unik varmeisolering og oppnår klasse A2 brannmotstand.',
+    chemicalComposition: 'Kitin, glucan, biokull-nanopartikler, kalsiumkarbonat, naturlige kiselmineraler.',
+    biologicalComposition: '65% Daldinia-mycelium og 35% finsiktet bjørkebio-kull.',
+    trl: 6,
+    applicationAreas: ['Kjerneisolasjon i branndører', 'Passivhus fasadeisolasjon', 'Isolasjon rundt piper og kanaler', 'Lyddempende skillevegger'],
+    suppliers: ['BioBuild Norge AS', 'SINTEF Byggforsk', 'Nordic MycoTech'],
+    epd: {
+      gwp: -2.4,
+      recycledContent: 95,
+      lifetime: 75,
+      circularity: '100% sirkulær, kan knuses og brukes som jordforbedrende bio-kull etter bruk.'
+    },
+    testResults: {
+      fire: 'Ekstremt brannresistent! Karboniserer uten røykutvikling ved 1000°C flammepåvirkning i 120 minutter.',
+      moisture: 'Utrustet med fuktstoppende hydrofobe sporer som hindrer vannabsorpsjon.',
+      strength: 'Trykkfasthet 3.8 MPa ved tetthet 110 kg/m3. Varmeledningsevne λ = 0.032 W/mK.',
+      durability: 'Uforgjengelig mot råtesopp på grunn av det tette, pre-karboniserte mycelnettverket.',
+      fireRating: 'A2-s1, d0 (Ubrennbar)',
+      strengthMpa: 3.8,
+      durabilityYears: 75
+    },
+    healthRisk: '100% inaktivt, varmebehandlet mycelium. Helt støvfritt og allergitestet.',
+    articles: [
+      {
+        id: 'art-16-1',
+        title: 'Fire-retardant mycelium-biochar composites for high-performance thermal insulation',
+        authors: 'Jensen, M., Amundsen, H. & Rostova, E.',
+        year: 2026,
+        journal: 'Materials & Design',
+        summary: 'Termisk konduktivitet og brannegenskaper for Daldinia-myceliumberiket biokullskum.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-16-1',
+        question: 'Kan vi opskalere vertikal støping av 200mm tykke isolasjonsblokker i industriell skala?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-16-1',
+        title: '120 minutters branntest etter ISO 834 standard kurve',
+        hypothesis: '100mm skumblokk vil holde bakside-temperaturen under 60°C under 1000°C direkte gassflamme.',
+        independentVariable: 'Blokk-tykkelse (50mm, 75mm, 100mm)',
+        dependentVariable: 'Temperatur på skjermet bakside over 120 minutter',
+        status: 'Fullført',
+        startDate: '2026-04-01',
+        endDate: '2026-05-15',
+        logs: [
+          '01.04.2026: Støpte og grodde 6 testblokker i klimakammer.',
+          '15.05.2026: Gjennomførte branntest i brennkammeret på RISE Fire Research.'
+        ],
+        results: 'Vellykket! Baksidetemperaturen steg kun til 48.2°C etter 120 minutter ved 1000°C stigning.'
+      }
+    ],
+    measurements: [
+      { id: 'm-16-1', timestamp: '2026-05-16', parameter: 'strength', value: 3.8, label: 'Trykkfasthet Isolasjon (MPa)', experimentTitle: '120 min Branntest' }
+    ]
+  },
+  {
+    id: 'mat-17',
+    name: 'Bakteriell Nanocellulose Bio-Glass (BC-Clear Window)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-6',
+    description: 'Sømløst, ultra-transparent og ubruddbart nanostrukturert bio-glass fremstilt gjennom bakteriell fermentering av Komagataeibacter xylinus. Tilbyr 92% lysgjennomslipp med 5x høyere slagfasthet enn konvensjonelt glass.',
+    chemicalComposition: 'Ren nanofibrillert cellulose (NFC), bio-epoksy kryssoverlenker fra linolje, kiselgel-reaktiv matrise.',
+    biologicalComposition: '90% bakteriell cellulose produsert fra eplepressrester og 10% organiske tverrbindere.',
+    trl: 7,
+    applicationAreas: ['Drivhus-vinduer med høy isolasjon', 'Solfanger-dekkglass', 'Uknuselige dagslys-takvinduer', 'Innvendige glassvegger'],
+    suppliers: ['BioBuild Norge AS', 'RISE Research Institutes', 'SkogBio Tech'],
+    epd: {
+      gwp: -2.1,
+      recycledContent: 94,
+      lifetime: 60,
+      circularity: '100% resirkulerbar til nanocellulose-masser eller biologisk nedbrytbar.'
+    },
+    testResults: {
+      fire: 'Selvslukkende nanostruktur med høy termisk stabilitet opp til 280°C.',
+      moisture: 'Hydrofob nanocoating forhindrer kondensdannelse og dugg på glassoverflaten.',
+      strength: 'Slagfasthet 85 kJ/m2 (uknuselig med standard hammerstøt). Bøyefasthet 140 MPa.',
+      durability: 'Fullstendig UV-resistent uten gulning etter 5 års utendørs eksponeringstester.',
+      fireRating: 'B-s1, d0 / U-verdi 0.6 W/m2K',
+      strengthMpa: 140.0,
+      durabilityYears: 60
+    },
+    healthRisk: '100% biokompatibelt og fritt for knusefare/skarpe skår.',
+    articles: [
+      {
+        id: 'art-17-1',
+        title: 'Optically transparent bacterial cellulose nanocomposites for energy-efficient glazing',
+        authors: 'Lindqvist, A., Dahl, J. & Solberg, L.',
+        year: 2025,
+        journal: 'Advanced Functional Materials',
+        summary: 'Fabrikasjon og optisk transmisjonsanalyse for tykke bakterielle cellulose-ruter.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-17-1',
+        question: 'Hvordan kan vi optimalisere fermenteringstiden for å gro 10mm tykke plater på under 48 timer?',
+        importance: 'Høy',
+        status: 'Åpen'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-17-1',
+        title: 'Slagfasthet- og hagl-simulering på BC-Clear glass',
+        hypothesis: 'BC-Clear rute på 4mm tåler 40mm is-kuler skutt i 130 km/t uten sprekker.',
+        independentVariable: 'Prosjektil-hastighet (80, 110, 130, 150 km/t)',
+        dependentVariable: 'Deformasjonsdybde og overflatesprekk-oppkomst',
+        status: 'Fullført',
+        startDate: '2026-03-10',
+        endDate: '2026-04-20',
+        logs: [
+          '10.03.2026: Fermenterte 12 BC-Clear testplater på nanolab.',
+          '20.04.2026: Skjøt ispilarer mot platene med trykkluftkanon.'
+        ],
+        results: 'Ingen gjennomtrengning eller skår! Kun elastisk bulking opp til 150 km/t.'
+      }
+    ],
+    measurements: [
+      { id: 'm-17-1', timestamp: '2026-04-21', parameter: 'strength', value: 140.0, label: 'Bøyefasthet Bio-Glass (MPa)', experimentTitle: 'Hagl-simulering' }
+    ]
+  },
+  {
+    id: 'mat-18',
+    name: 'Lav & Moss Bioreaktiv Fasadekledning (Cladonia BioFacade)',
+    category: 'Plantebaserte',
+    ownerId: 'res-4',
+    description: 'Levende, bioklimatisk fasadepanel sammensatt av tørkeresistent reinlav (Cladonia stellaris) grodd på en resirkulert, porøs leca- og pumismatrise. Renser byluft for NOx, opptar CO2 og regulerer mikroklimaet rundt bygningen.',
+    chemicalComposition: 'Usninsyre, kalsiumsilikat, porøs vulkansk leire, naturbaserte hydrogeler.',
+    biologicalComposition: '70% levende Cladonia stellaris lav-kultur og 30% porøst bio-mineralsubstrat.',
+    trl: 8,
+    applicationAreas: ['Bærekraftige fasadepaneler', 'Støyskjermer langs motorveier', 'Grønne lunger i urbane strøk', 'Innvendige mosevegger'],
+    suppliers: ['NaturMose AS', 'BioBuild Norge AS', 'NIBIO'],
+    epd: {
+      gwp: -3.2,
+      recycledContent: 90,
+      lifetime: 40,
+      circularity: '100% sirkulær, regenererer seg selv ved naturlig regnvann.'
+    },
+    testResults: {
+      fire: 'Inneholder naturlig høye fuktreserver og usninsyrer som virker brannhemmende.',
+      moisture: 'Kan absorbere opptil 300% sin egen tørrvekt i regnvann uten drypping.',
+      strength: 'Bøyefasthet 8.5 MPa i bæreplaten. Absorberer 12 dB luftbåren støy.',
+      durability: 'Tåler arktiske vintre ned til -40°C og tilpasser seg tørkeperioder ved å gå i dvale.',
+      fireRating: 'B-s2, d0',
+      strengthMpa: 8.5,
+      durabilityYears: 40
+    },
+    healthRisk: 'Aktiverer luftrensing; reduserer fint støv (PM2.5) og NOx i byrommet.',
+    articles: [
+      {
+        id: 'art-18-1',
+        title: 'Living lichen facade cladding for urban air purification and microclimate modulation',
+        authors: 'Dahl, J., Lindqvist, A. & Amundsen, H.',
+        year: 2026,
+        journal: 'Building and Environment',
+        summary: 'NOx-reduksjon og termisk isolasjonskapasitet for levende Cladonia-fasader i nordisk klima.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-18-1',
+        question: 'Hvor raskt restituerer lavkulturene seg etter 60 dagers sammenhengende sommer-tørke?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-18-1',
+        title: 'NOx-opptaksmåling i klimakammer med byforurensning',
+        hypothesis: '1 m2 Cladonia BioFacade fjerner over 150 mg NO2 per døgn fra omgivelsesluften.',
+        independentVariable: 'NO2-konsentrasjon (50 ppb, 100 ppb, 250 ppb)',
+        dependentVariable: 'Reduksjonsrate (mg/m2/døgn) og klorofyll-fluorescens',
+        status: 'Aktiv',
+        startDate: '2026-05-01',
+        logs: [
+          '01.05.2026: Monterte 4 fasadepaneler i gasskammeret.',
+          '15.06.2026: Målte gjennomsnittlig reduksjon på 182 mg NO2/m2/døgn.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-18-1', timestamp: '2026-06-16', parameter: 'strength', value: 8.5, label: 'Bøyefasthet Bæreplate (MPa)', experimentTitle: 'NOx-opptaksmåling' }
+    ]
+  },
+  {
+    id: 'mat-19',
+    name: 'Flaksfiber-Bio-Kompositt (Linum Structural Beam)',
+    category: 'Plantebaserte',
+    ownerId: 'res-2',
+    description: 'Strukturelle I-bjelker og profiler produsert av flettede nordiske lin-/flaksfibre impregnert med bio-epoksy basert på tallolje fra treforedling. Erstatter stål og aluminium i lette tak- og fasadebærende konstruksjoner med negativt karbonavtrykk.',
+    chemicalComposition: 'Cellulosemikrofibriller (75%), hemicellulose (15%), furu-basert bio-epoksymatrise (10%).',
+    biologicalComposition: 'Linum usitatissimum (dyrket lin/flaks) forsterket med talloljebindemiddel fra norsk skogsavfall.',
+    trl: 7,
+    applicationAreas: ['Bærende takbjelker', 'Fasadesøyler', 'Vindu- og dørkarmer', 'Modulære lettbærende rammer'],
+    suppliers: ['Nordic Flax Tech AS', 'Bcomp Switzerland/Norway', 'NIBIO Ås'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'RISE Accredited',
+      accreditationNumber: 'NO-RISE-2026-FLX902',
+      verifiedDate: '2026-05-14',
+      laboratory: 'RISE Fire & Structures Lab Trondheim',
+      leadInspector: 'Prof. Lars Solberg (RISE-sertifisert)',
+      reproducibilityScore: 98.7,
+      confidenceInterval: '95% KI (± 0.03)',
+      passedStandards: [
+        'NS-EN 1995-1-1 (Eurokode 5 Tre & Komposittkonstruksjoner)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0)',
+        'ASTM D3039 (Strekkfasthet for Polymerkompositter)',
+        'ISO 14044 (Livsløpsvurdering EPD)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -1.4,
+      recycledContent: 90,
+      lifetime: 80,
+      circularity: 'Termisk gjenvinnbar eller 100% bio-komposterbar etter kjemisk hydrolyse.'
+    },
+    testResults: {
+      fire: 'Behandlet med naturlig kalsiumborat forsinker. Oppnår B-s1, d0 uten giftige halogenholdige kjemikalier.',
+      moisture: 'Hydrofobisk herdet overflate. Vannabsorpsjon < 1.8% etter 48t nedsenking.',
+      strength: 'Meget høy strekk- og bøyefasthet. 18.5 MPa strekkfasthet i fiberretning, elastisitetsmodul 14 GPa.',
+      durability: 'UV-stabilisert med naturlig kvae. Testet for 80 års levetid i tøft nordisk kystklima.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 18.5,
+      durabilityYears: 80,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: '100% formaldehyd- og isocyanatfri. Ingen VOC-avdamping i inneklima.',
+    articles: [
+      {
+        id: 'art-19-1',
+        title: 'Structural flax composite I-beams in load-bearing architecture: Creep and fatigue under cyclic loading',
+        authors: 'Solberg, L., Amundsen, H. & Lindqvist, A.',
+        year: 2026,
+        journal: 'Composites Part B: Engineering',
+        summary: 'Dokumenterer at flettede flaksfiberbjelker har overlegen vibrasjonsdemping og 85% lavere vekt enn stålkonstruksjoner.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-19-1',
+        question: 'Hvordan påvirkes langtids siging (kryp) ved permanent 95% relativ luftfuktighet over 10 år?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-19-1',
+        title: '4-punkts bøyebelastningstest og knekking under 20 kN last',
+        hypothesis: 'Bjelkeprofilen tåler over 20 kN punktlast i midtspenn uten delaminering mellom flens og steg.',
+        independentVariable: 'Punktlast (kN) fra 5 til 25 kN med 0.5 kN/s hastighet',
+        dependentVariable: 'Nedbøyning (mm) og akustisk emisjon for mikroskopisk fibersprekk',
+        status: 'Fullført',
+        startDate: '2026-04-10',
+        endDate: '2026-05-12',
+        results: 'Brudd oppstod først ved 24.8 kN. Bøyestivhet EI = 420 kNm² bekreftet.',
+        logs: [
+          '10.04.2026: Kalibrerte ZwickRoell 100 kN testrigg.',
+          '28.04.2026: Gjennomførte 100 000 sykliske utmattelseslaster.',
+          '12.05.2026: Endelig bruddtest gjennomført med video-opptak.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-19-1', timestamp: '2026-05-12', parameter: 'strength', value: 18.5, label: 'Maks Bøyefasthet (MPa)', experimentTitle: '4-punkts bøyebelastningstest' },
+      { id: 'm-19-2', timestamp: '2026-05-14', parameter: 'gwp', value: -1.4, label: 'Netto EPD GWP (kg CO2 eq/kg)', experimentTitle: 'Livsløpsanalyse RISE' }
+    ]
+  },
+  {
+    id: 'mat-20',
+    name: 'Mose- og Lavbasert Bio-Filterkledning (Cladonia Living Wall)',
+    category: 'Plantebaserte',
+    ownerId: 'res-1',
+    description: 'Levende og stabiliserte akustikk- og rensepaneler bygget på reinlav (Cladonia stellaris) og torvmose. Regulerer luftfuktighet passivt og fjerner 88% av luftbårne VOC-gasser, formaldehyd og svevestøv i inneluften.',
+    chemicalComposition: 'Usninsyre (naturlig antibakteriell), kitin-lignende lavvegger, polysakkarider og glyserin-mineralstabilisator.',
+    biologicalComposition: '100% viltvoksende Cladonia stellaris (kvitkrull) fra Rendalen, bundet på perforert treplate.',
+    trl: 8,
+    applicationAreas: ['Innvendig støyreduksjon', 'Biofilisk luftrensing', 'Skillevegger i kontorlandskap', 'Soveromsfuktbuffere'],
+    suppliers: ['Nordic Moss Design AS', 'BioFilter Norge', 'NIBIO Skog'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-MOSS41',
+      verifiedDate: '2026-03-22',
+      laboratory: 'SINTEF Byggforsk Akustikklab Oslo',
+      leadInspector: 'Dr. Marianne Jensen (SINTEF-godkjent)',
+      reproducibilityScore: 99.2,
+      confidenceInterval: '99% KI (± 0.01)',
+      passedStandards: [
+        'ISO 354 (Måling av Lydabsorpsjon i Etterklangrom - Klasse A)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0)',
+        'ISO 16000-9 (Emisjonstesting av Flyktige Organiske Forbindelser)',
+        'BREEAM-NOR v6.0 (Kriterier for Naturlig Inneklima)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -0.9,
+      recycledContent: 95,
+      lifetime: 30,
+      circularity: 'Fullstendig komposterbar til næringsrik humus.'
+    },
+    testResults: {
+      fire: 'Inneholder naturlige mineralsalter som forhindrer flammestiftelse (B-s1, d0).',
+      moisture: 'Svært høy hygroskopisitet: Opptar og avgir opptil 35% fukt uten vekst av skadelig mugg pga. usninsyre.',
+      strength: 'Lav mekanisk bæreevne (0.15 MPa). Kledningselement uten bærende funksjon.',
+      durability: 'Krever ingen vanning eller sollys. Beholder farge og elastisitet i minimum 30 år innendørs.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 0.15,
+      durabilityYears: 30,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: false,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Hypoallergenisk, ingen pollen og forbedrer astma-indeks i inneluft.',
+    articles: [
+      {
+        id: 'art-20-1',
+        title: 'Passive biofiltration and acoustics of stabilized lichen walls in modern wooden schools',
+        authors: 'Jensen, M. & Vanebo, S.',
+        year: 2026,
+        journal: 'Indoor and Built Environment',
+        summary: 'Målinger fra 12 klasserom i Trondheim viste 40% reduksjon i etterklangstid og markant lavere CO2- og formaldehydopphopning.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-20-1',
+        question: 'Hvor ofte bør saltstabilisatoren fornyes ved ekstremt tørt vinterklima (< 20% RF)?',
+        importance: 'Lav',
+        status: 'Løst'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-20-1',
+        title: 'Akustisk absorpsjonstest i fullskala etterklangskammer',
+        hypothesis: 'Panelene oppnår NRC > 0.90 og absorpsjonsklasse A over 500-4000 Hz frekvensbåndet.',
+        independentVariable: 'Paneltetthet (4 kg/m², 6 kg/m², 8 kg/m²)',
+        dependentVariable: 'Lydabsorpsjonskoeffisient alpha_s per tersbånd',
+        status: 'Fullført',
+        startDate: '2026-02-10',
+        endDate: '2026-03-18',
+        results: 'Vektet absorpsjonskoeffisient alpha_w = 0.95 (Klasse A) verifisert.',
+        logs: [
+          '10.02.2026: Monterte 12 m² testflate i etterklangsrommet.',
+          '18.03.2026: SINTEF Akustikk utstedte offisielt kalibreringssertifikat.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-20-1', timestamp: '2026-03-18', parameter: 'moisture', value: 34.0, label: 'Maks Hygroskopisk Bufferkapasitet (%)', experimentTitle: 'Akustisk absorpsjonstest' }
+    ]
+  },
+  {
+    id: 'mat-21',
+    name: 'FungiCrete Komprimert Mycelium-Treblokk (Pleurotus Ostreatus)',
+    category: 'Mykologiske',
+    ownerId: 'res-1',
+    description: 'Høytrykkskomprimert mycelium-matrise dyrket med østerssopp (Pleurotus ostreatus) og bjørkeflis. Varmeherdet til halvbærende murblokker med enestående termisk og mekanisk stabilitet for Alive Houses.',
+    chemicalComposition: 'Tettvevd beta-glukan kitinettverk, lignocellulose og polymeriserte proteiner.',
+    biologicalComposition: 'Pleurotus ostreatus mycelium sammengrodd med 80% resirkulert norsk bjørk- og oreflis.',
+    trl: 6,
+    applicationAreas: ['Ikke-bærende innervegger', 'Akustiske skillemoduler', 'Termisk brannskille', 'Sirkulære innredningsblokker'],
+    suppliers: ['MycoBuild Nordic', 'NTNU Biopolymer', 'Alive Houses R&D'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'BioBuild Certified',
+      accreditationNumber: 'NO-BIOBUILD-2026-FNG88',
+      verifiedDate: '2026-06-02',
+      laboratory: 'BioBuild Advanced Testing Facility & NTNU Lab',
+      leadInspector: 'Dr. Marianne Jensen & Dr. Johan Dahl',
+      reproducibilityScore: 97.4,
+      confidenceInterval: '95% KI (± 0.05)',
+      passedStandards: [
+        'NS-EN 772-1 (Prøvingsmetoder for Murverk - Trykkfasthet)',
+        'ISO 8301 (Bestemmelse av Varmemotstand og Termisk Konduktivitet)',
+        'ISO 1182 (Ikke-brennbarhetstest for Byggematerialer)',
+        'NS-EN ISO 717-1 (Lydisolasjon i Bygninger)'
+      ],
+      badgeLevel: 'Emerald'
+    },
+    epd: {
+      gwp: -1.8,
+      recycledContent: 98,
+      lifetime: 60,
+      circularity: 'Kan gjenbrukes som bygningsfyll eller komposteres 100% etter levetid.'
+    },
+    testResults: {
+      fire: 'Forkuller ved 450°C og danner en isolerende keramisk barriere. EI 60 brannmotstand.',
+      moisture: 'Impregnert med bio-voks; tåler 85% RF uten dimensjonsendring.',
+      strength: 'Trykkfasthet på 3.4 MPa, overgår standard porebetong (Leca/Ytong lettblokker).',
+      durability: 'Stabil over 60 år i innendørs klimasone. Inaktivert med 90°C tørrvarme.',
+      fireRating: 'Class B-s1, d0 / EI 60',
+      strengthMpa: 3.4,
+      durabilityYears: 60,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Null utslipp, 100% fri for giftige bindemidler eller formaldehyd.',
+    articles: [
+      {
+        id: 'art-21-1',
+        title: 'High-density compressed fungal blocks: Mechanical scaling and thermal conductivity optimization',
+        authors: 'Jensen, M., Dahl, J. & Rostova, E.',
+        year: 2026,
+        journal: 'Materials & Design',
+        summary: 'Optimalisering av presstrykk og varmebehandling resulterte i 3.4 MPa trykkfasthet med lambda-verdi 0.042 W/mK.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-21-1',
+        question: 'Hva er den mest energieffektive tørkemetoden for storskala industriell produksjon?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-21-1',
+        title: 'Langtids fuktighetsbelastning og trykkfasthet ved 90% RF',
+        hypothesis: 'Trykkfastheten forblir over 3.0 MPa etter 90 dager i fuktkammer.',
+        independentVariable: 'Eksponeringstid i fuktkammer (0, 30, 60, 90 dager)',
+        dependentVariable: 'Trykkfasthet (MPa) og overflatesoppdannelse',
+        status: 'Aktiv',
+        startDate: '2026-05-01',
+        logs: [
+          '01.05.2026: Plasserte 20 testblokker i fuktkammer (20°C, 90% RF).',
+          '01.06.2026: 30-dagers test: 3.35 MPa trykkfasthet, null muggvekst registrert.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-21-1', timestamp: '2026-06-01', parameter: 'strength', value: 3.4, label: 'Målt Trykkfasthet (MPa)', experimentTitle: 'Langtids fuktighetsbelastning' },
+      { id: 'm-21-2', timestamp: '2026-06-02', parameter: 'gwp', value: -1.8, label: 'LCA Karbonlagring (kg CO2 eq/kg)', experimentTitle: 'BioBuild LCA Validering' }
+    ]
+  },
+  {
+    id: 'mat-22',
+    name: 'Bakteriell Kalsitt-Sandstein (MICP BioStone)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-2',
+    description: 'Kaldherdet bio-kalkstein skapt ved mikrobiologisk indusert kalsittutfelling (MICP) med Sporosarcina pasteurii. Omdanner lokalt sand og pukk til solide byggesteiner uten energikrevende sementbrenning.',
+    chemicalComposition: '95% Kalsiumkarbonat (kalsittkrystaller CaCO3), 5% kvartssand (SiO2) og biologisk restmasse.',
+    biologicalComposition: 'Sporosarcina pasteurii bakteriekulturer stimulert med naturlig urea og kalsiumklorid.',
+    trl: 7,
+    applicationAreas: ['Bærende fasadeblokker', 'Belegningsstein', 'Kystsikring', 'Støttemurer'],
+    suppliers: ['BioStone Technologies AS', 'SINTEF Betonglab', 'NTNU Konstruksjonsteknikk'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'ISO/EN Standard',
+      accreditationNumber: 'NO-ISO-2026-MICP505',
+      verifiedDate: '2026-04-19',
+      laboratory: 'SINTEF Structural Materials Lab & NTNU Sementlab',
+      leadInspector: 'Prof. Lars Solberg (ISO 17025 Lead Auditor)',
+      reproducibilityScore: 98.9,
+      confidenceInterval: '95% KI (± 0.02)',
+      passedStandards: [
+        'NS-EN 12390-3 (Trykkfasthet for Herdet Betong og Stein)',
+        'NS-EN 1338 (Belegningsstein av Betong - Krav og Prøvingsmetoder)',
+        'NS-EN 13755 (Vannabsorpsjon ved Atmosfærisk Trykk)',
+        'ISO 14040 (Livsløpsvurdering for Byggestein)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -0.6,
+      recycledContent: 88,
+      lifetime: 120,
+      circularity: '100% resirkulerbar som tilslag i ny biobetong eller fyllmasse.'
+    },
+    testResults: {
+      fire: 'Klasse A1 Ubrennbar naturstein. Tåler over 1000°C uten sprekking eller gassavgivelse.',
+      moisture: 'Ekstremt lav vannabsorpsjon (< 3.2%). Svært god frostbestandighet (56 fryse/tine-sykluser bestått).',
+      strength: 'Trykkfasthet på 24.5 MPa, tilsvarende standard C25 konstruksjonsbetong.',
+      durability: 'Eksepsjonell levetid på 120+ år. Kalsittbindingene styrkes over tid i kontakt med fukt og CO2.',
+      fireRating: 'A1 (Ubrennbar)',
+      strengthMpa: 24.5,
+      durabilityYears: 120,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Helt mineralsk, inaktiv etter fullført kalsifisering. Trygt for drikkevannskontakt.',
+    articles: [
+      {
+        id: 'art-22-1',
+        title: 'Microbial induced calcite precipitation (MICP) for zero-emission sandstone block manufacturing',
+        authors: 'Solberg, L., Rostova, E. & Lindqvist, A.',
+        year: 2026,
+        journal: 'Cement and Concrete Research',
+        summary: 'Gjennombrudd innen enzymatisk akselerert bakterievekst som halverer herdetiden fra 14 dager til 36 timer.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-22-1',
+        question: 'Kan vi erstatte laboratoriedyrket urea med nitrogenrikt overskuddsvann fra landbruket?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-22-1',
+        title: 'Trykkprøving og knekklast etter 56 fryse-/tinesykluser i saltvann',
+        hypothesis: 'Trykkfastheten forblir over 22 MPa uten avskalling etter tøff kysteksponering.',
+        independentVariable: 'Antall fryse/tine-sykluser (-20°C til +20°C i 3% NaCl)',
+        dependentVariable: 'Masseavskalling (g/m²) og gjenværende trykkfasthet (MPa)',
+        status: 'Fullført',
+        startDate: '2026-03-01',
+        endDate: '2026-04-15',
+        results: 'Resultat: 24.5 MPa trykkfasthet, masseavskalling < 15 g/m² (Krav < 200 g/m²).',
+        logs: [
+          '01.03.2026: Klargjorde 12 bio-sandsteinsprismer i klimakammer.',
+          '15.04.2026: SINTEF Betonglab bekreftet bestått test.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-22-1', timestamp: '2026-04-15', parameter: 'strength', value: 24.5, label: 'Målt Trykkfasthet (MPa)', experimentTitle: 'Trykkprøving og knekklast' },
+      { id: 'm-22-2', timestamp: '2026-04-18', parameter: 'gwp', value: -0.6, label: 'Netto EPD Karbonregnskap (kg CO2 eq/kg)', experimentTitle: 'Livsløpsanalyse MICP' }
+    ]
+  },
+  {
+    id: 'mat-23',
+    name: 'Grankvae- & Bivoksbasert Hydrofobisk Trebeskyttelse (Nordic Resin Shield)',
+    category: 'Tre & Kork',
+    ownerId: 'res-8',
+    description: 'Løsemiddelfri, 100% naturlig dypimpregnering for trevirke laget av oppvarmet grankvae (Picea abies harpiks), rå linolje og ren bivoks. Beskytter fasader og terrassebord mot råtesopp i over 70 år uten giftig kobber eller kreosot.',
+    chemicalComposition: 'Abietinsyre (resin/harpiks), linolensyre-triglyserider, palmitinsyre-estere (bivoks).',
+    biologicalComposition: 'Ren harpiks tappet fra norsk gran, kaldpresset linolje fra Østfold og bivoks fra lokale birøktere.',
+    trl: 8,
+    applicationAreas: ['Utvendig trekledning', 'Terrassedekker', 'Vannkantkonstruksjoner', 'Vindussnekkeri'],
+    suppliers: ['Nordic Resin Works', 'Norsk Treteknisk Institutt', 'Trebåt- & Byggvern AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'RISE Accredited',
+      accreditationNumber: 'NO-RISE-2026-RES774',
+      verifiedDate: '2026-02-15',
+      laboratory: 'RISE Treteknisk Laboratorium Stockholm/Trondheim',
+      leadInspector: 'Dr. Ingrid Hauge & Dr. Sindre Vanebo',
+      reproducibilityScore: 99.4,
+      confidenceInterval: '99% KI (± 0.01)',
+      passedStandards: [
+        'NS-EN 335 (Holdbarhet for Tre og Trebaserte Produkter - Bruksklasse 3 & 4)',
+        'NS-EN 113 (Laboratorieprøving av Trebeskyttelsesmidler mot Råtesopp)',
+        'EN 927-6 (Maling og Lakk for Utvendig Tre - Akselerert Væring QUV)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0 på Tett Kledning)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -2.3,
+      recycledContent: 100,
+      lifetime: 70,
+      circularity: 'Forblir 100% biologisk nedbrytbar og komposterbar.'
+    },
+    testResults: {
+      fire: 'Inneholder naturlige mineraliserte harpikssalter som oppnår B-s1, d0 på tett kledning.',
+      moisture: 'Kontaktvinkel mot vann: 118° (superhydrofobisk perleeffekt). Fuktopptak redusert med 92%.',
+      strength: 'Øker overflatehardheten til furu og gran med 35% (Brinell-hardhet 2.8 HB).',
+      durability: 'Bestått 2000 timers akselerert kystværtest (Nordic Climate Simulator) uten overflateoppsprekking.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 12.0,
+      durabilityYears: 70,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Giftfri, matgodkjent og avgir en behagelig duft av naturlig norsk barskog.',
+    articles: [
+      {
+        id: 'art-23-1',
+        title: 'Deep penetration mechanisms of bio-hot-oil pine resin in Scots pine sapwood',
+        authors: 'Hauge, I., Vanebo, S. & Amundsen, H.',
+        year: 2026,
+        journal: 'Holzforschung',
+        summary: 'Mikro-CT skanning viser 100% cellelumina-fylling opp til 12 mm dybde i furu-yteved.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-23-1',
+        question: 'Hva er den maksimale tørketiden før overflaten er fullstendig klebefri ved lave temperaturer (+5°C)?',
+        importance: 'Medium',
+        status: 'Løst'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-23-1',
+        title: 'QUV akselerert aldringstest med UV-stråling og saltvannssprut',
+        hypothesis: 'Trekledningen beholder vannavvisende kontaktvinkel > 100° etter 2000 timers QUV-syklus.',
+        independentVariable: 'Harpikskonsentrasjon i linoljeblandingen (20%, 35%, 50%)',
+        dependentVariable: 'Vannkontaktvinkel, fargeendring (Delta E) og soppkolonisering',
+        status: 'Fullført',
+        startDate: '2025-11-01',
+        endDate: '2026-02-05',
+        results: '35% harpiksblanding opprettholdt 118° kontaktvinkel og null soppangrep.',
+        logs: [
+          '01.11.2025: Startet 2000-timers syklus i QUV-kammer.',
+          '05.02.2026: RISE utstedte offisiell godkjenning for Bruksklasse 4.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-23-1', timestamp: '2026-02-05', parameter: 'moisture', value: 92.0, label: 'Fuktavvisningsgrad (%)', experimentTitle: 'QUV akselerert aldringstest' },
+      { id: 'm-23-2', timestamp: '2026-02-15', parameter: 'gwp', value: -2.3, label: 'LCA Karbonbinding (kg CO2 eq/kg)', experimentTitle: 'RISE EPD Verifisering' }
+    ]
+  },
+  {
+    id: 'mat-24',
+    name: 'Gjenvunnet Dun- & Fjærkompositt for Akustikkdemping (BioFeather Aero)',
+    category: 'Annet',
+    ownerId: 'res-4',
+    description: 'Superlette, akustikk- og varmeisolerende matter produsert av sterilisert og kjemisk kryssbundet overskuddsfjær og dun fra landbruket. Utnytter keratinets hule mikrostruktur for overlegen lyd- og varmeisolasjon i Alive Houses.',
+    chemicalComposition: 'Alfa-keratin (91%), svovel-kryssbundne disulfidbroer, bio-polymermatrise (9%).',
+    biologicalComposition: '100% resirkulerte fjær fra norsk fjørfeproduksjon, termisk bundet med polylaktid (PLA).',
+    trl: 7,
+    applicationAreas: ['Lydisolasjon i etasjeskillere', 'Innvendig støyabsorpsjon', 'Ytterveggsisolasjon', 'Akustiske himlingsplater'],
+    suppliers: ['BioFeather Nordic AS', 'SINTEF Akustikk', 'Nortura Sirkulær'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'BioBuild Certified',
+      accreditationNumber: 'NO-BIOBUILD-2026-FTH12',
+      verifiedDate: '2026-07-10',
+      laboratory: 'BioBuild Acoustic & Thermal Lab & SINTEF Byggforsk',
+      leadInspector: 'Dr. Elena Rostova & Dr. Marianne Jensen',
+      reproducibilityScore: 98.1,
+      confidenceInterval: '95% KI (± 0.03)',
+      passedStandards: [
+        'ISO 11654 (Akustikk - Lydabsorbenter for Bygninger - Vurdering av Lydabsorpsjon)',
+        'NS-EN 12667 (Termisk Ytelse for Byggematerialer - Lambda 0.031 W/mK)',
+        'NS-EN 13501-1 (Brannklassifisering B-s1, d0)',
+        'OEKO-TEX Standard 100 (Klasse 1 Trygg for Inneklima)'
+      ],
+      badgeLevel: 'Emerald'
+    },
+    epd: {
+      gwp: -1.5,
+      recycledContent: 96,
+      lifetime: 50,
+      circularity: 'Kan gjenvinnes til ny isolasjon eller omdannes til nitrogenrik gjødsel.'
+    },
+    testResults: {
+      fire: 'Keratin forkuller naturlig ved antennelse og kveler flammer (selvslukkende, B-s1, d0).',
+      moisture: 'Fuktavvisende nanostruktur på fjæroverflaten hindrer oppbløting. Dampåpen (mu = 1.2).',
+      strength: 'Kompresjonselastisk med 95% gjenvinning etter 50 kPa belastning.',
+      durability: 'Behandlet mot møll med naturlig lavendel- og neemoljeekstrakt. 50 års funksjonsgaranti.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 0.35,
+      durabilityYears: 50,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: false,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Grundig vasket og dampsterilisert på 130°C. 100% hypoallergenisk.',
+    articles: [
+      {
+        id: 'art-24-1',
+        title: 'Thermal insulation and acoustic attenuation of upcycled poultry feather keratin mats',
+        authors: 'Rostova, E., Jensen, M. & Amundsen, H.',
+        year: 2026,
+        journal: 'Journal of Cleaner Production',
+        summary: 'Viser 20% bedre varmeisolasjon (lambda = 0.031 W/mK) enn konvensjonell mineralull av samme tetthet.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-24-1',
+        question: 'Hva er den mest kostnadseffektive metoden for storskala hydrofobisk nanobehandling av råfjær?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-24-1',
+        title: 'Måling av trinnlydsreduksjon (Delta L_w) i trebjelkelag',
+        hypothesis: 'BioFeather Aero matten gir minst 28 dB trinnlydsreduksjon i etasjeskille av massivtre.',
+        independentVariable: 'Isolasjonstykkelse (25 mm, 50 mm, 75 mm)',
+        dependentVariable: 'Vektet trinnlydsforbedringstall Delta L_w (dB)',
+        status: 'Fullført',
+        startDate: '2026-06-01',
+        endDate: '2026-07-05',
+        results: '50 mm matte oppnådde Delta L_w = 31 dB, overgikk alle TEK17-krav.',
+        logs: [
+          '01.06.2026: Monterte prøvefelt i akkreditert akustikklab.',
+          '05.07.2026: Fullførte trinnlydsmålinger med standard bankeapparat.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-24-1', timestamp: '2026-07-05', parameter: 'strength', value: 0.35, label: 'Kompresjonsmotstand (MPa)', experimentTitle: 'Måling av trinnlydsreduksjon' },
+      { id: 'm-24-2', timestamp: '2026-07-10', parameter: 'gwp', value: -1.5, label: 'Sirkulært GWP Utslippstall (kg CO2 eq/kg)', experimentTitle: 'BioBuild LCA Validering' }
+    ]
+  },
+  {
+    id: 'mat-25',
+    name: 'Silica-anriket Diatomejord- og Alginatpuss (Diatomite BioPlaster)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-3',
+    description: 'Pustende og luftrensende innvendig dekorpuss fremstilt av fossilt diatomé-skall (kiselalger) bundet med bruntarealginat og hvitkalk. Har mikroskopisk nano-porøsitet som absorberer lukt, fukt og formaldehyd i rommet.',
+    chemicalComposition: 'Amorf biogen silika (SiO2 · nH2O), kalsiumhydroksid, natriumalginat og glimmer.',
+    biologicalComposition: 'Fossile kiselalger (Bacillariophyceae) forsterket med Laminaria hyperborea alge-ekstrakt.',
+    trl: 8,
+    applicationAreas: ['Innvendig veggpuss', 'Baderomsvegger uten direkte sprut', 'Kjellerrehabilitering', 'Soverom og oppholdsrom'],
+    suppliers: ['Nordic Diatomite Plaster', 'SINTEF Kjemilab', 'AlgeBygg Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-DIA93',
+      verifiedDate: '2026-05-30',
+      laboratory: 'SINTEF Byggforsk Inneklimagruppe & Norsk Treteknisk Institutt',
+      leadInspector: 'Dr. Elena Rostova & Dr. Sindre Vanebo',
+      reproducibilityScore: 99.6,
+      confidenceInterval: '99% KI (± 0.008)',
+      passedStandards: [
+        'JIS A 1470-1 (Fuktbufferkapasitet for Byggematerialer > 250 g/m²)',
+        'NS-EN 15824 (Spesifikasjon for Utvendig og Innvendig Puss basert på Organiske Bindemidler)',
+        'ISO 16000-3 (Måling av Formaldehyd og Andre Karbonylforbindelser)',
+        'NS-EN 13501-1 (Brannklasse A1 - Ubrennbart)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -0.8,
+      recycledContent: 85,
+      lifetime: 60,
+      circularity: 'Kan knuses og returneres til jorden som kisel-jordforbedring.'
+    },
+    testResults: {
+      fire: 'A1 Ubrennbar mineral-algepuss. Utvikler null røyk eller giftige gasser.',
+      moisture: 'Verdensledende fuktbuffer: Tar opp 3 ganger mer fuktighet enn leirpuss ved 90% RF.',
+      strength: 'Høy vedheft (1.2 MPa på mur/tre) og bøyestrekkfasthet 2.8 MPa.',
+      durability: 'Høyt alkalisk pH-nivå (pH > 11) forhindrer mugg- og soppvekst permanent.',
+      fireRating: 'A1 (Ubrennbar)',
+      strengthMpa: 2.8,
+      durabilityYears: 60,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Null VOC, absorberer aktivt formaldehyd fra møbler og forbedrer inneklimaet markant.',
+    articles: [
+      {
+        id: 'art-25-1',
+        title: 'Hygroscopic buffering and indoor formaldehyde remediation of diatomite-alginate interior plasters',
+        authors: 'Rostova, E., Vanebo, S. & Jensen, M.',
+        year: 2026,
+        journal: 'Building and Environment',
+        summary: 'Dokumenterte 72% reduksjon av toppfuktighet i baderomsmiljø og 90% adsorpsjon av formaldehyd i løpet av 24 timer.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-25-1',
+        question: 'Hvordan påvirkes pussens fargebestandighet ved direkte eksponering for intens sol over 15 år?',
+        importance: 'Lav',
+        status: 'Løst'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-25-1',
+        title: 'Dynamisk fuktkammertesting etter Nordtest-protokollen',
+        hypothesis: 'Fuktbufferverdien (MBV) er over 2.5 g/(m² · %RF), som kvalifiserer til klassen Excellent.',
+        independentVariable: 'Pusstykkelse (4 mm, 8 mm, 12 mm)',
+        dependentVariable: 'Moisture Buffer Value (MBV) ved 8t 75% RF / 16t 33% RF syklus',
+        status: 'Fullført',
+        startDate: '2026-04-10',
+        endDate: '2026-05-25',
+        results: 'MBV målt til 3.1 g/(m² · %RF) for 8 mm puss (Klasse: Excellent Moisture Buffer).',
+        logs: [
+          '10.04.2026: Klargjorde 8 prøveplater av Diatomite BioPlaster.',
+          '25.05.2026: SINTEF Inneklima utstedte sertifikat med MBV = 3.1.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-25-1', timestamp: '2026-05-25', parameter: 'strength', value: 2.8, label: 'Bøyestrekkfasthet (MPa)', experimentTitle: 'Dynamisk fuktkammertesting' },
+      { id: 'm-25-2', timestamp: '2026-05-30', parameter: 'gwp', value: -0.8, label: 'Livsløpsavtrykk EPD (kg CO2 eq/kg)', experimentTitle: 'SINTEF EPD Validering' }
     ]
   }
 ];
