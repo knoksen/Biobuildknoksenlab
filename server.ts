@@ -3,6 +3,8 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import dns from 'dns/promises';
+import net from 'net';
 
 dotenv.config();
 
@@ -173,9 +175,70 @@ Følgende felter må fylles ut i JSON:
   }
 });
 
+function isPrivateOrLocalIp(ip: string): boolean {
+  if (net.isIP(ip) === 4) {
+    const [a, b] = ip.split('.').map(Number);
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 0) return true;
+    return false;
+  }
+
+  if (net.isIP(ip) === 6) {
+    const normalized = ip.toLowerCase();
+    if (normalized === '::1') return true;
+    if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true; // ULA
+    if (normalized.startsWith('fe80:')) return true; // link-local
+    return false;
+  }
+
+  return true;
+}
+
+async function isSafeExternalHttpUrl(rawUrl: string): Promise<boolean> {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+  if (parsed.username || parsed.password) return false;
+  if (parsed.port && parsed.port !== '80' && parsed.port !== '443') return false;
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local')) return false;
+
+  if (net.isIP(hostname)) {
+    return !isPrivateOrLocalIp(hostname);
+  }
+
+  try {
+    const records = await dns.lookup(hostname, { all: true });
+    if (!records || records.length === 0) return false;
+    for (const record of records) {
+      if (isPrivateOrLocalIp(record.address)) return false;
+    }
+  } catch {
+    return false;
+  }
+
+  return true;
+}
+
 // Helper for fetching image URL and converting to base64
 async function urlToBase64(url: string): Promise<{ mimeType: string; data: string } | null> {
   try {
+    const safe = await isSafeExternalHttpUrl(url);
+    if (!safe) {
+      console.warn('Blocked unsafe referenceImage URL');
+      return null;
+    }
+
     const response = await fetch(url);
     if (!response.ok) return null;
     const arrayBuffer = await response.arrayBuffer();
