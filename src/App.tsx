@@ -608,6 +608,24 @@ export default function App() {
   const [showProvenModal, setShowProvenModal] = useState(false);
   const [onlyProvenFilter, setOnlyProvenFilter] = useState(false);
 
+  const sanitizeImageSrc = (value: string | null): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+
+    if (trimmed.startsWith('data:image/')) return trimmed;
+
+    try {
+      const parsed = new URL(trimmed, window.location.origin);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        return parsed.toString();
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
+  };
+
   // Get active material
   const activeMaterial = materials.find(m => m.id === selectedMaterialId) || materials[0];
 
@@ -4159,7 +4177,7 @@ export default function App() {
                                               <span className="text-[9px] font-bold uppercase text-blue-700 font-sans block">Etter (Testresultat)</span>
                                               <div 
                                                 className="relative group w-24 h-16 rounded-lg overflow-hidden border border-blue-300 bg-gray-100 cursor-pointer shadow-2xs hover:shadow-xs transition-all" 
-                                                onClick={() => setLightboxImage(testImg)}
+                                                onClick={() => setLightboxImage(sanitizeImageSrc(testImg))}
                                               >
                                                 <img src={testImg} alt="Testresultat" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
                                                 <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors flex items-center justify-center">
@@ -5449,7 +5467,7 @@ export default function App() {
           </div>
           <div className="max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl border border-white/20 shadow-2xl bg-stone-900" onClick={(e) => e.stopPropagation()}>
             <img 
-              src={lightboxImage} 
+              src={sanitizeImageSrc(lightboxImage) || ''} 
               alt="Høyoppløselig testresultat" 
               className="max-w-full max-h-[80vh] object-contain mx-auto"
             />
