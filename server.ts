@@ -12,6 +12,10 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 const PORT = 3000;
+const ALLOWED_REFERENCE_IMAGE_ORIGINS = new Set<string>([
+  // Add trusted origins that are allowed to host reference images.
+  // Example: 'https://images.example.com'
+]);
 
 // Initialize Google GenAI client lazily to avoid crashing on startup if key is missing
 let aiClient: GoogleGenAI | null = null;
@@ -233,13 +237,26 @@ async function isSafeExternalHttpUrl(rawUrl: string): Promise<boolean> {
 // Helper for fetching image URL and converting to base64
 async function urlToBase64(url: string): Promise<{ mimeType: string; data: string } | null> {
   try {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      console.warn('Blocked invalid referenceImage URL');
+      return null;
+    }
+
+    if (!ALLOWED_REFERENCE_IMAGE_ORIGINS.has(parsed.origin)) {
+      console.warn('Blocked non-allowlisted referenceImage origin:', parsed.origin);
+      return null;
+    }
+
     const safe = await isSafeExternalHttpUrl(url);
     if (!safe) {
       console.warn('Blocked unsafe referenceImage URL');
       return null;
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, { redirect: 'error' });
     if (!response.ok) return null;
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
