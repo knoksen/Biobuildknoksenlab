@@ -250,13 +250,20 @@ async function urlToBase64(url: string): Promise<{ mimeType: string; data: strin
       return null;
     }
 
-    const safe = await isSafeExternalHttpUrl(url);
+    const normalizedPath = decodeURIComponent(parsed.pathname).replace(/\\/g, '/');
+    if (normalizedPath.split('/').includes('..')) {
+      console.warn('Blocked referenceImage URL with path traversal');
+      return null;
+    }
+
+    const canonicalUrl = parsed.toString();
+    const safe = await isSafeExternalHttpUrl(canonicalUrl);
     if (!safe) {
       console.warn('Blocked unsafe referenceImage URL');
       return null;
     }
 
-    const response = await fetch(url, { redirect: 'error' });
+    const response = await fetch(canonicalUrl, { redirect: 'error' });
     if (!response.ok) return null;
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
