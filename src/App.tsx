@@ -612,7 +612,10 @@ export default function App() {
     if (!value) return null;
     const trimmed = value.trim();
 
-    if (trimmed.startsWith('data:image/')) return trimmed;
+    // Allow only strict base64 data URLs for common raster image formats.
+    const safeDataImagePattern =
+      /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[a-z0-9+/]+=*$/i;
+    if (safeDataImagePattern.test(trimmed)) return trimmed;
 
     try {
       const parsed = new URL(trimmed, window.location.origin);
