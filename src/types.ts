@@ -78,6 +78,7 @@ export interface BioMaterial {
   experiments: Experiment[];
   measurements?: MeasurementPoint[];
   ownerId?: string;
+  spaceIds?: string[];
 }
 
 export interface MeasurementPoint {
@@ -107,5 +108,23 @@ export interface ImageTag {
   y: number; // 0-100 percentage
   label: string;
   category: 'Sprekk' | 'Fukt' | 'Delaminering' | 'Misfarging' | 'Generelt';
+}
+
+export interface UserSpace {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  leadResearcherId: string;
+  department: string;
+  focusAreas: string[];
+  pinnedMaterialIds: string[];
+  activeExperimentsCount: number;
+  memberCount: number;
+  badge: string;
+  color: string;
+  isCustom?: boolean;
+  notes?: string;
+  createdAt?: string;
 }
 

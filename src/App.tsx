@@ -47,13 +47,17 @@ import {
   Crosshair,
   Target,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  Building2,
+  Pin,
+  PinOff
 } from 'lucide-react';
-import { initialBioMaterials, initialResearchers } from './data';
+import { initialBioMaterials, initialResearchers, initialUserSpaces } from './data';
 import { ImageTag } from './types';
-import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, Researcher, MeasurementPoint } from './types';
+import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, Researcher, MeasurementPoint, UserSpace } from './types';
 import UnrealBridge from './components/UnrealBridge';
 import EierallokeringView from './components/EierallokeringView';
+import UserSpacesView from './components/UserSpacesView';
 import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport } from './utils/pdfGenerator';
 
 import {
@@ -419,14 +423,21 @@ export default function App() {
   }, [materials]);
 
   // Global View State
-  const [globalView, setGlobalView] = useState<'materials' | 'unreal' | 'eierallokering'>('materials');
+  const [globalView, setGlobalView] = useState<'materials' | 'unreal' | 'eierallokering' | 'userspaces'>('materials');
 
   // Load initial researchers from localStorage or initialResearchers
   const [researchers, setResearchers] = useState<Researcher[]>(() => {
     const saved = localStorage.getItem('biobuild_researchers');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed: Researcher[] = JSON.parse(saved);
+        const merged = [...parsed];
+        initialResearchers.forEach(initRes => {
+          if (!merged.some(r => r.id === initRes.id)) {
+            merged.push(initRes);
+          }
+        });
+        return merged;
       } catch (e) {
         console.error('Failed parsing saved researchers', e);
       }
@@ -438,6 +449,34 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('biobuild_researchers', JSON.stringify(researchers));
   }, [researchers]);
+
+  // Load initial user spaces from localStorage or initialUserSpaces
+  const [userSpaces, setUserSpaces] = useState<UserSpace[]>(() => {
+    const saved = localStorage.getItem('biobuild_userspaces');
+    if (saved) {
+      try {
+        const parsed: UserSpace[] = JSON.parse(saved);
+        const merged = [...parsed];
+        initialUserSpaces.forEach(initSpace => {
+          if (!merged.some(s => s.id === initSpace.id)) {
+            merged.push(initSpace);
+          }
+        });
+        return merged;
+      } catch (e) {
+        console.error('Failed parsing saved userspaces', e);
+      }
+    }
+    return initialUserSpaces;
+  });
+
+  // Save changes to user spaces
+  useEffect(() => {
+    localStorage.setItem('biobuild_userspaces', JSON.stringify(userSpaces));
+  }, [userSpaces]);
+
+  // Active space ID for lab filtering ('all' or specific space ID)
+  const [activeSpaceId, setActiveSpaceId] = useState<string>('all');
 
   // Unreal Engine & MetaHuman Simulator States
   const [unrealConfig, setUnrealConfig] = useState({
@@ -1163,7 +1202,11 @@ export default function App() {
                           (m.provenTesting?.accreditationNumber && m.provenTesting.accreditationNumber.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'Alle' || m.category === selectedCategory;
     const matchesProven = !onlyProvenFilter || (m.provenTesting && m.provenTesting.isVerified);
-    return matchesSearch && matchesCategory && matchesProven;
+    const matchesSpace = activeSpaceId === 'all' || (() => {
+      const activeSpace = userSpaces.find(s => s.id === activeSpaceId);
+      return activeSpace ? activeSpace.pinnedMaterialIds.includes(m.id) : true;
+    })();
+    return matchesSearch && matchesCategory && matchesProven && matchesSpace;
   });
 
   // Reset to initial data helper
@@ -2096,12 +2139,12 @@ export default function App() {
       </header>
 
       {/* ----------------- GLOBAL WORKSPACE SELECTOR ----------------- */}
-      <div id="global-workspace-selector" className="bg-[#eeede6]/50 border-b border-[#e2e1d5] px-4 md:px-8 py-3 flex flex-wrap gap-2 items-center justify-between">
+      <div id="global-workspace-selector" className="bg-[#eeede6]/50 border-b border-[#e2e1d5] px-4 md:px-8 py-3 flex flex-wrap gap-3 items-center justify-between">
         <div className="flex flex-wrap gap-2">
           <button
             id="btn-view-materials"
             onClick={() => setGlobalView('materials')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
               globalView === 'materials'
                 ? 'bg-[#5A5A40] text-white border-[#5A5A40] shadow-sm'
                 : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
@@ -2111,9 +2154,21 @@ export default function App() {
             <span>🧪 Bio-Materialer Lab</span>
           </button>
           <button
+            id="btn-view-userspaces"
+            onClick={() => setGlobalView('userspaces')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
+              globalView === 'userspaces'
+                ? 'bg-emerald-900 text-white border-emerald-900 shadow-sm'
+                : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>🏢 Bruker-Spaces & Forskningslaber ({userSpaces.length})</span>
+          </button>
+          <button
             id="btn-view-unreal"
             onClick={() => setGlobalView('unreal')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
               globalView === 'unreal'
                 ? 'bg-indigo-950 text-white border-indigo-950 shadow-sm'
                 : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
@@ -2125,19 +2180,40 @@ export default function App() {
           <button
             id="btn-view-eierallokering"
             onClick={() => setGlobalView('eierallokering')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border cursor-pointer ${
               globalView === 'eierallokering'
                 ? 'bg-amber-900 text-white border-amber-900 shadow-sm'
                 : 'bg-white text-[#2c2c24]/80 border-[#e2e1d5] hover:bg-white/80'
             }`}
           >
             <Bot className="w-3.5 h-3.5 text-amber-500" />
-            <span>📊 AI Eierallokering & Statistikk</span>
+            <span>📊 AI Eierallokering & Forskere ({researchers.length})</span>
           </button>
         </div>
-        <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#2c2c24]/60 bg-white/40 px-3 py-1 rounded-lg border border-[#e2e1d5]">
-          <Activity className="w-3 h-3 text-emerald-600 animate-pulse" />
-          <span>Unreal Port 3000 Loop-Back: AKTIV</span>
+
+        {/* Space quick selector & Unreal status */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-[#e2e1d5] shadow-2xs">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Aktivt Space:</span>
+            <select
+              id="select-active-userspace"
+              value={activeSpaceId}
+              onChange={(e) => setActiveSpaceId(e.target.value)}
+              className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+            >
+              <option value="all">Alle Materialer ({materials.length})</option>
+              {userSpaces.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.code} – {s.name} ({s.pinnedMaterialIds.length})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-[#2c2c24]/60 bg-white/40 px-3 py-1 rounded-lg border border-[#e2e1d5]">
+            <Activity className="w-3 h-3 text-emerald-600 animate-pulse" />
+            <span>Loop-Back: AKTIV</span>
+          </div>
         </div>
       </div>
 
@@ -2215,6 +2291,28 @@ export default function App() {
 
           {/* Active materials list */}
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-[#e2e1d5] flex-1 flex flex-col min-h-[300px] lg:min-h-0">
+            {/* Active User Space Indicator Banner */}
+            {activeSpaceId !== 'all' && (() => {
+              const currentSpace = userSpaces.find(s => s.id === activeSpaceId);
+              return currentSpace ? (
+                <div className="mb-3 p-2.5 bg-emerald-50/80 rounded-xl border border-emerald-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span className="font-bold text-emerald-900 truncate text-[11px]">
+                      {currentSpace.code}: {currentSpace.name}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSpaceId('all')}
+                    className="text-[10px] font-bold text-emerald-800 hover:text-emerald-950 underline shrink-0 cursor-pointer ml-2"
+                  >
+                    Vis alle
+                  </button>
+                </div>
+              ) : null;
+            })()}
+
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-xs font-bold uppercase tracking-widest text-[#2c2c24]/60">
                 Registrerte Organismer & Materialer ({filteredMaterials.length})
@@ -2276,19 +2374,19 @@ export default function App() {
 
                       {/* Proven Testing Badge Mark */}
                       {mat.provenTesting?.isVerified && (
-                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                          <span className="inline-flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-900/10 text-emerald-800 border border-emerald-300">
+                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-900/10 text-emerald-900 border border-emerald-300">
                             <ShieldCheck className="w-2.5 h-2.5 text-emerald-700" />
                             <span>{mat.provenTesting.tier}</span>
                           </span>
-                          <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded ${
-                            mat.provenTesting.badgeLevel === 'PLATINUM'
-                              ? 'bg-slate-900 text-white'
-                              : mat.provenTesting.badgeLevel === 'GOLD'
-                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                              : mat.provenTesting.badgeLevel === 'EMERALD'
-                              ? 'bg-emerald-800 text-white'
-                              : 'bg-stone-200 text-stone-800'
+                          <span className={`text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded shadow-2xs border ${
+                            mat.provenTesting.badgeLevel?.toUpperCase() === 'PLATINUM'
+                              ? 'bg-slate-900 text-white border-slate-700'
+                              : mat.provenTesting.badgeLevel?.toUpperCase() === 'GOLD'
+                              ? 'bg-amber-100 text-amber-950 border-amber-300'
+                              : mat.provenTesting.badgeLevel?.toUpperCase() === 'EMERALD'
+                              ? 'bg-emerald-800 text-emerald-50 border-emerald-700'
+                              : 'bg-stone-200 text-stone-900 border-stone-300'
                           }`}>
                             {mat.provenTesting.badgeLevel}
                           </span>
@@ -2391,6 +2489,36 @@ export default function App() {
                         <Beaker className="w-3.5 h-3.5 text-blue-200" />
                         <span>Eksporter Eksperiment- & Testdata (PDF)</span>
                       </button>
+
+                      {/* Pin to active user space button */}
+                      {activeSpaceId !== 'all' && (() => {
+                        const currentSpace = userSpaces.find(s => s.id === activeSpaceId);
+                        if (!currentSpace) return null;
+                        const isPinned = currentSpace.pinnedMaterialIds.includes(activeMaterial.id);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserSpaces(prev => prev.map(s => {
+                                if (s.id !== activeSpaceId) return s;
+                                const updated = isPinned
+                                  ? s.pinnedMaterialIds.filter(id => id !== activeMaterial.id)
+                                  : [...s.pinnedMaterialIds, activeMaterial.id];
+                                return { ...s, pinnedMaterialIds: updated };
+                              }));
+                            }}
+                            className={`flex items-center gap-1.5 text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer border ${
+                              isPinned
+                                ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300'
+                                : 'bg-stone-50 hover:bg-stone-100 text-slate-700 border-stone-300'
+                            }`}
+                            title={isPinned ? `Fjern fra ${currentSpace.name}` : `Fest til ${currentSpace.name}`}
+                          >
+                            <Pin className={`w-3.5 h-3.5 ${isPinned ? 'text-emerald-700' : 'text-slate-500'}`} />
+                            <span>{isPinned ? `Festet i ${currentSpace.code}` : `Fest til ${currentSpace.code}`}</span>
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -2414,14 +2542,14 @@ export default function App() {
                               <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-950">
                                 {activeMaterial.provenTesting.tier}
                               </span>
-                              <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded shadow-2xs ${
-                                activeMaterial.provenTesting.badgeLevel === 'PLATINUM'
-                                  ? 'bg-slate-900 text-white'
-                                  : activeMaterial.provenTesting.badgeLevel === 'GOLD'
-                                  ? 'bg-amber-400 text-amber-950 border border-amber-500/50'
-                                  : activeMaterial.provenTesting.badgeLevel === 'EMERALD'
-                                  ? 'bg-emerald-700 text-white'
-                                  : 'bg-stone-300 text-stone-900'
+                              <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded shadow-2xs border ${
+                                activeMaterial.provenTesting.badgeLevel?.toUpperCase() === 'PLATINUM'
+                                  ? 'bg-slate-900 text-white border-slate-800'
+                                  : activeMaterial.provenTesting.badgeLevel?.toUpperCase() === 'GOLD'
+                                  ? 'bg-amber-400 text-amber-950 border-amber-500/80'
+                                  : activeMaterial.provenTesting.badgeLevel?.toUpperCase() === 'EMERALD'
+                                  ? 'bg-emerald-700 text-white border-emerald-800'
+                                  : 'bg-stone-300 text-stone-900 border-stone-400'
                               }`}>
                                 {activeMaterial.provenTesting.badgeLevel} BEVIS
                               </span>
@@ -2430,7 +2558,7 @@ export default function App() {
                               </span>
                             </div>
                             <p className="text-[10px] text-emerald-900/80 mt-0.5 flex items-center gap-2 flex-wrap">
-                              <span>Akkreditert av: <strong>{activeMaterial.provenTesting.testingLab}</strong></span>
+                              <span>Akkreditert av: <strong>{activeMaterial.provenTesting.laboratory || (activeMaterial.provenTesting as any).testingLab}</strong></span>
                               <span>•</span>
                               <span>Dato: {activeMaterial.provenTesting.verifiedDate}</span>
                               <span>•</span>
@@ -5127,6 +5255,24 @@ export default function App() {
         </div>
       )}
 
+      {/* ================= USER SPACES & RESEARCH LABS VIEW ================= */}
+      {globalView === 'userspaces' && (
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col justify-start">
+          <UserSpacesView
+            userSpaces={userSpaces}
+            setUserSpaces={setUserSpaces}
+            materials={materials}
+            researchers={researchers}
+            activeSpaceId={activeSpaceId}
+            setActiveSpaceId={setActiveSpaceId}
+            onNavigateToMaterials={(spaceId) => {
+              if (spaceId) setActiveSpaceId(spaceId);
+              setGlobalView('materials');
+            }}
+          />
+        </div>
+      )}
+
 
       {/* ================= FOOTER STATUS BAR ================= */}
       <footer id="app-footer" className="bg-[#2c2c24] text-[#bcbc9f] py-4 px-4 md:px-8 text-[10px] uppercase tracking-[0.2em] font-mono mt-auto border-t border-[#1c1c14] flex flex-col sm:flex-row justify-between items-center gap-2">
@@ -5585,14 +5731,14 @@ export default function App() {
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                   Sertifiseringsnivå & Akkrediteringsorgan
                 </span>
-                <span className={`text-xs font-black uppercase px-3 py-1 rounded-lg shadow-2xs ${
-                  activeMaterial.provenTesting.badgeLevel === 'PLATINUM'
-                    ? 'bg-slate-900 text-white'
-                    : activeMaterial.provenTesting.badgeLevel === 'GOLD'
-                    ? 'bg-amber-400 text-amber-950 border border-amber-500'
-                    : activeMaterial.provenTesting.badgeLevel === 'EMERALD'
-                    ? 'bg-emerald-800 text-white'
-                    : 'bg-stone-300 text-stone-900'
+                <span className={`text-xs font-black uppercase px-3 py-1 rounded-lg shadow-2xs border ${
+                  activeMaterial.provenTesting.badgeLevel?.toUpperCase() === 'PLATINUM'
+                    ? 'bg-slate-900 text-white border-slate-700'
+                    : activeMaterial.provenTesting.badgeLevel?.toUpperCase() === 'GOLD'
+                    ? 'bg-amber-400 text-amber-950 border-amber-500'
+                    : activeMaterial.provenTesting.badgeLevel?.toUpperCase() === 'EMERALD'
+                    ? 'bg-emerald-800 text-white border-emerald-900'
+                    : 'bg-stone-300 text-stone-900 border-stone-400'
                 }`}>
                   {activeMaterial.provenTesting.tier} • {activeMaterial.provenTesting.badgeLevel}
                 </span>
@@ -5602,7 +5748,7 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Testlaboratorium:</span>
-                  <span className="font-bold text-slate-900">{activeMaterial.provenTesting.testingLab}</span>
+                  <span className="font-bold text-slate-900">{activeMaterial.provenTesting.laboratory || (activeMaterial.provenTesting as any).testingLab}</span>
                 </div>
                 <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Fagansvarlig / Inspektør:</span>

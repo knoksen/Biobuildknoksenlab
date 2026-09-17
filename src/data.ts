@@ -1,4 +1,4 @@
-import { BioMaterial, Researcher } from './types';
+import { BioMaterial, Researcher, UserSpace } from './types';
 
 export const initialBioMaterials: BioMaterial[] = [
   {
@@ -1934,6 +1934,1341 @@ export const initialBioMaterials: BioMaterial[] = [
       { id: 'm-25-1', timestamp: '2026-05-25', parameter: 'strength', value: 2.8, label: 'Bøyestrekkfasthet (MPa)', experimentTitle: 'Dynamisk fuktkammertesting' },
       { id: 'm-25-2', timestamp: '2026-05-30', parameter: 'gwp', value: -0.8, label: 'Livsløpsavtrykk EPD (kg CO2 eq/kg)', experimentTitle: 'SINTEF EPD Validering' }
     ]
+  },
+  {
+    id: 'mat-26',
+    name: 'Transparent Trevirke for Dagslysførende Fasader (Optisk Delignifisert Furu)',
+    category: 'Tre & Kork',
+    ownerId: 'res-10',
+    spaceIds: ['space-main', 'space-sintef'],
+    description: 'Optisk transparent heltre utviklet ved kontrollert kjemisk fjerning av lysabsorberende lignin fra nordisk furu, etterfulgt av vakuuminfiltrering med bio-basert metakrylat-matrise. Gir 85% lystransmisjon og overlegen termisk isolasjon sammenlignet med tradisjonelt 3-lags isolerglass.',
+    chemicalComposition: 'Cellulose-nanofibriller (78%), bio-basert poly-metylmetakrylat (PMMA matrise 22%), fri for klorforbindelser og halogener.',
+    biologicalComposition: 'Nordisk furu (Pinus sylvestris) delignifisert ved pereddiksyre-prosess, bevart naturlig cellulose-skjelett med langsgående ledningsbaner.',
+    trl: 6,
+    applicationAreas: ['Translusente ytterfasader', 'Diffust dagslysinnslipp i takkonstruksjoner', 'Bygningsintegrerte solceller (BIPV substrat)', 'Innvendige lysledende bærevegger'],
+    suppliers: ['KTH Wood Biocomposites Lab', 'RISE Bygg & Treteknikk', 'BioBuild Nordic AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'RISE Accredited',
+      accreditationNumber: 'NO-RISE-2026-TRW26',
+      verifiedDate: '2026-06-18',
+      laboratory: 'RISE Bygg & Treteknikk Lab',
+      leadInspector: 'Dr. Solveig Skoglund',
+      reproducibilityScore: 98.7,
+      confidenceInterval: '95% KI (± 0.02)',
+      passedStandards: [
+        'ISO 13468-1 (Plast - Bestemmelse av total lystransmittans: 85.4%)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0 med bio-silikatflammehemmer)',
+        'NS-EN ISO 10077-2 (Termisk U-verdi målt til 0.82 W/m²K)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -0.45,
+      recycledContent: 45,
+      lifetime: 60,
+      circularity: '88% resirkulerbar komposittmatrise'
+    },
+    testResults: {
+      fire: 'Behandlet med bio-mineralisert silikatflammehemmer. Røykutvikling er minimal og brennbare drypp oppstår ikke.',
+      moisture: 'Vakuum-infiltrert porenettverk hindrer vannopptak; metningsverdi under 1.2% ved 95% RF.',
+      strength: 'Høy slagseighet og bøyestrekkfasthet på 92 MPa, tre ganger sterkere enn standard floatglass.',
+      durability: 'UV-stabilisert i over 50 år uten misfarging eller optisk turbiditet.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 92.0,
+      durabilityYears: 50,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Null formaldehyd, TVOC < 10 µg/m³. Ikke-splintrende bruddmekanikk gir høy personsikkerhet.',
+    articles: [
+      {
+        id: 'art-26-1',
+        title: 'Optically transparent wood composites with bio-based polymer infiltration for energy-efficient glazing',
+        authors: 'Skoglund, S., Dahl, J. & Berglund, L.',
+        year: 2026,
+        journal: 'Nature Communications Materials',
+        summary: 'Demonstrerte 85.4% lystransmisjon med haze på 70%, noe som gir diffust blendingsfritt interiørlys med U-verdi 0.82 W/m²K.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-26-1',
+        question: 'Hvordan kan delignifiseringstiden kuttes fra 8 timer til under 90 minutter i industriell rulle-prosess?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-26-1',
+        title: 'Accelerert termisk klimasykling (-25°C til +65°C)',
+        hypothesis: 'Differensiell termisk ekspansjon mellom cellulose og bio-PMMA forårsaker ikke delaminering etter 1000 sykluser.',
+        independentVariable: 'Temperaturspenn og relativ fuktighet (10% til 90% RF)',
+        dependentVariable: 'Optisk uklarhet (Haze) og bøyefasthet (MPa)',
+        status: 'Fullført',
+        startDate: '2026-03-01',
+        endDate: '2026-05-15',
+        results: 'Bøyefastheten var stabil på 91.8 MPa (+/- 0.8 MPa) med null indre delaminering.',
+        logs: [
+          '01.03.2026: Plasserte 12 prøvestaver i klimakammer på RISE Trondheim.',
+          '15.05.2026: Verifiserte feilfri mikrostruktur via SEM-skanning.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-26-1', timestamp: '2026-05-15', parameter: 'strength', value: 92.0, label: 'Bøyefasthet (MPa)', experimentTitle: 'Accelerert termisk klimasykling' },
+      { id: 'm-26-2', timestamp: '2026-05-18', parameter: 'gwp', value: -0.45, label: 'Livsløpsavtrykk EPD (kg CO2 eq/kg)', experimentTitle: 'RISE LCA Analyse' }
+    ]
+  },
+  {
+    id: 'mat-27',
+    name: 'Bioluminescerende Alge-Innkapslet Fasademaling (Noctiluca Bio-Glow)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-13',
+    spaceIds: ['space-main', 'space-marine'],
+    description: 'Levende fotosyntetisk fasadebelegg beriket med mikroinnkapslede bioluminescerende algekulturer (Pyrocystis fusiformis) og fosforescerende silikater. Lader opp energi gjennom naturlig dagslys og avgir et mykt, blendingsfritt grønn-blått nattlys (470 nm) som kutter utendørs belysningsbehov med opptil 60%.',
+    chemicalComposition: 'Kalium-vannglass (silikatbindemiddel), mikrokapsler av kalsiumalginat, uorganiske fosforescerende strontiumaluminat-pigmenter.',
+    biologicalComposition: 'Inaktiverte og levende celler av Pyrocystis fusiformis mikroalger innkapslet i næringsgel og hydrofile porer.',
+    trl: 5,
+    applicationAreas: ['Nattlysende fasadeelementer', 'Rømningsveier og trappeløp', 'Gang- og sykkelveier', 'Subtile arkitektoniske lysaksenter'],
+    suppliers: ['Københavns Universitet Bio-Optics', 'SINTEF Ocean', 'BioBuild Nordic AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'BioBuild Certified',
+      accreditationNumber: 'NO-BIOBUILD-2026-ALG27',
+      verifiedDate: '2026-07-02',
+      laboratory: 'SINTEF Ocean & NTNU Fotobiologi Lab',
+      leadInspector: 'Dr. Mikkel Lindholm',
+      reproducibilityScore: 97.4,
+      confidenceInterval: '95% KI (± 0.03)',
+      passedStandards: [
+        'DIN 67510 (Fosforescerende pigmenter og produkter - Lyskraft)',
+        'NS-EN 13501-1 (Brannklasse A2-s1, d0 ubrannbart mineralsk silikat)',
+        'ISO 16000-9 (VOC-fri innendørs og utendørs emisjonstest)'
+      ],
+      badgeLevel: 'Emerald'
+    },
+    epd: {
+      gwp: -1.1,
+      recycledContent: 70,
+      lifetime: 30,
+      circularity: '100% mineral- og biologisk resirkulerbar'
+    },
+    testResults: {
+      fire: 'Silikatbasert bindemiddel gjør overflaten fullstendig flammehemmende (Klasse A2).',
+      moisture: 'Svært diffusjonsåpen (Sd < 0.05 m); tillater at underliggende murbruk puster fritt.',
+      strength: 'Høy abrasjonsmotstand etter 10 000 våtskrubbesykluser etter DIN EN 13300.',
+      durability: 'Bioluminescens og fosforescens bevarer over 85% av lysintensiteten etter 10 års UV-eksponering.',
+      fireRating: 'A2-s1, d0',
+      strengthMpa: 4.5,
+      durabilityYears: 30,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Ufarlig og giftfri. Ingen tungmetaller eller radioaktive isotoper. Algekulturen er biologisk sikkerhetsnivå 1.',
+    articles: [
+      {
+        id: 'art-27-1',
+        title: 'Photosynthetic light-emitting architectural coatings using microencapsulated marine dinoflagellates',
+        authors: 'Lindholm, M., Vanebo, S. & Amundsen, H.',
+        year: 2026,
+        journal: 'Solar Energy Materials and Solar Cells',
+        summary: 'Målte en kontinuerlig luminescens på 120 mcd/m² i de første 4 timene etter mørkets frembrudd, med en stabil etterglød på 15 mcd/m² gjennom natten.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-27-1',
+        question: 'Hvordan forbedre mikrokapslenes næringsbuffer slik at algekoloniene kan fornye seg over 15 vintre?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-27-1',
+        title: 'Måling av fotonisk lysutbytte etter 8 timers nordisk vinterdagslys',
+        hypothesis: 'Kombinasjonen av algeluciferin og strontiumaluminat gir > 50 mcd/m² luminans kl 22:00.',
+        independentVariable: 'Konsentrasjon av mikrokapsler (5%, 10%, 15% vektandel)',
+        dependentVariable: 'Luminans (mcd/m²) målt ved spektrofotometer over 12 timer',
+        status: 'Fullført',
+        startDate: '2026-02-10',
+        endDate: '2026-04-12',
+        results: '10% vektandel ga 68 mcd/m² kl 22:00, mer enn tilstrekkelig for sikker orientering i mørke.',
+        logs: [
+          '10.02.2026: Påførte 3 strøk på betongplater på NTNU Gløshaugen.',
+          '12.04.2026: Testresultater evaluert og bekreftet av SINTEF Ocean.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-27-1', timestamp: '2026-04-12', parameter: 'moisture', value: 0.04, label: 'Diffusjonsmotstand Sd (m)', experimentTitle: 'Fotonisk lysutbytte og porøsitetstest' },
+      { id: 'm-27-2', timestamp: '2026-04-15', parameter: 'gwp', value: -1.1, label: 'Netto GWP karbonkreditt (kg CO2 eq/m²)', experimentTitle: 'LCA Algebelegg' }
+    ]
+  },
+  {
+    id: 'mat-28',
+    name: 'Mykologisk Brann- & Akustikkfilt (Fomes Fomentarius Knuskkjuke)',
+    category: 'Mykologiske',
+    ownerId: 'res-1',
+    spaceIds: ['space-main', 'space-myco', 'space-sintef'],
+    description: 'Tett, uvevd bio-filt produsert direkte fra tramalaget i knuskkjuke (Fomes fomentarius). Eksepsjonell naturlig brannmotstand (selvslukkende uten tilsatte kjemikalier) og fremragende lydabsorpsjonskoeffisient (NRC = 0.95). Utviklet for konsertsaler, skoler og åpne kontorlandskap.',
+    chemicalComposition: 'Fibrillært kitin-glukan-kompleks (92%), melanin (4%), spor av aminosyrer og mineraler.',
+    biologicalComposition: 'Fomes fomentarius (knuskkjuke) høstet fra bærekraftig forvaltet lauvskog og bearbeidet mekanisk uten syrebad.',
+    trl: 7,
+    applicationAreas: ['Akustisk himling og veggpaneler', 'Brannhemmende mellomlegg', 'Møbeltapetsering i offentlige bygg', 'Lyddempende skillevegger'],
+    suppliers: ['NTNU Mykologilab', 'NIBIO Ås', 'BioBuild Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-MYC28',
+      verifiedDate: '2026-05-29',
+      laboratory: 'SINTEF Akustikk & Byggforsk Oslo',
+      leadInspector: 'Prof. Eirik Møller',
+      reproducibilityScore: 99.2,
+      confidenceInterval: '99% KI (± 0.01)',
+      passedStandards: [
+        'NS-EN ISO 354 (Måling av lydabsorpsjon i etterklangrom: NRC 0.95)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0 helt uten kjemiske tilsetninger)',
+        'ISO 16000-3 (Emisjon av formaldehyd: Ikke påvisbart, < 1 µg/m³)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -2.3,
+      recycledContent: 98,
+      lifetime: 70,
+      circularity: '100% biologisk nedbrytbar i kompost'
+    },
+    testResults: {
+      fire: 'Eksepsjonell naturlig flammehemming. Danner et tett kullsjikt momentant ved 400°C som kveler videre forbrenning.',
+      moisture: 'Fungerer som dynamisk fuktbufferelement; absorberer opptil 35% av egenvekt i vanndamp uten å miste form.',
+      strength: 'Myk, elastisk tekstur med strekkfasthet på 4.8 MPa og god slitestyrke mot mekanisk berøring.',
+      durability: 'Uforanderlig akustisk demping over 70 år; motstår muggvekst på grunn av naturlige soppdrepende metabolitter.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 4.8,
+      durabilityYears: 70,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: '100% allergivennlig. Renser inneluft for støvpartikler og luktstoffer. Ingen respirable glassfibre.',
+    articles: [
+      {
+        id: 'art-28-1',
+        title: 'Acoustic absorption and intrinsic fire retardancy of natural Fomes fomentarius fungal mycelium tramal sheets',
+        authors: 'Møller, E., Jensen, M. & Berg, T.',
+        year: 2026,
+        journal: 'Applied Acoustics',
+        summary: 'Dokumenterte at knuskkjukefilt med 25 mm tykkelse overgår mineralull i lydabsorpsjon mellom 500 Hz og 4000 Hz, med NRC på 0.95.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-28-1',
+        question: 'Kan farging med naturlige planteoljer gjøres vaskeekte uten å forringe brannhemmende kitinstruktur?',
+        importance: 'Medium',
+        status: 'Løst'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-28-1',
+        title: 'Fullskala etterklangromstesting av 40 m² veggareal',
+        hypothesis: 'Etterklangstiden T60 reduseres med > 60% i frekvensområdet 250 - 2000 Hz.',
+        independentVariable: 'Paneltykkelse (15 mm vs 25 mm) og spaltedybde mot bakvegg',
+        dependentVariable: 'Etterklangstid (s) og absorpsjonsfaktor α_s',
+        status: 'Fullført',
+        startDate: '2026-03-20',
+        endDate: '2026-05-20',
+        results: '25 mm plate ga α_s = 0.98 ved 1000 Hz. SINTEF Akustikk utstedte offisiell A-klassifisering.',
+        logs: [
+          '20.03.2026: Monterte paneler i SINTEF etterklangrom i Trondheim.',
+          '20.05.2026: Endelig rapport ferdigstilt og lagt i BioBuild arkivet.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-28-1', timestamp: '2026-05-20', parameter: 'strength', value: 4.8, label: 'Strekkfasthet (MPa)', experimentTitle: 'Mekanisk strekkprøving' },
+      { id: 'm-28-2', timestamp: '2026-05-29', parameter: 'gwp', value: -2.3, label: 'Netto karbonfangst EPD (kg CO2 eq/kg)', experimentTitle: 'LCA Vugge-til-Grav' }
+    ]
+  },
+  {
+    id: 'mat-29',
+    name: 'Skalldyrbasert Kitosan-Geopolymer Mørtel (Marint Kystsement)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-9',
+    spaceIds: ['space-main', 'space-marine'],
+    description: 'Alkali-aktivert marin geopolymer fremstilt fra kalsinert leire, knuste rekeskall og modifisert marint kitosan. Konstruert spesifikt for kaianlegg, moloer og vindmøllefundamenter utsatt for kloridinntrengning, saltvannskorrosjon og krevende fryse-tine-sykluser i arktisk kystklima.',
+    chemicalComposition: 'Aluminosilikat-polymer (Si-O-Al-O), kalsiumkarbonat, deacetilert kitosan (C6H11NO4)n (3.5%), natriumsilikat aktivator.',
+    biologicalComposition: 'Nordatlantisk dypvannsreke (Pandalus borealis) restråstoff fra fiskeindustrien i Troms og Finnmark.',
+    trl: 7,
+    applicationAreas: ['Kaianlegg og flytebrygger', 'Offshore vindfundamenter', 'Sjøvannsbestandige moloer', 'Slitesterk kystsprøytebetong'],
+    suppliers: ['ChitoTech Tromsø', 'SINTEF Kystinfrastruktur', 'BioBuild Marine AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'Nordic Field Proven',
+      accreditationNumber: 'NO-NORDIC-2026-MAR29',
+      verifiedDate: '2026-06-11',
+      laboratory: 'SINTEF Kystinfrastruktur Tromsø',
+      leadInspector: 'Dr. Sindre Vanebo',
+      reproducibilityScore: 98.9,
+      confidenceInterval: '95% KI (± 0.02)',
+      passedStandards: [
+        'NS-EN 12390-3 (Trykkfasthet etter 28 døgn: 54.2 MPa)',
+        'NT BUILD 492 (Akselerert kloridmigrasjonskoeffisient D_nssm < 1.5 · 10⁻¹² m²/s)',
+        'NS-EN 13501-1 (Brannklasse A1 Ubrennbart materiale)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: 48.0, // 85% lavere enn tradisjonell Portland-sement (som ligger på 350-400 kg/tonn)
+      recycledContent: 88,
+      lifetime: 120,
+      circularity: 'Kan knuses til 100% gjenvinnbar tilslag for ny marin betong'
+    },
+    testResults: {
+      fire: 'Fullstendig ubrennbar geopolymer med klasse A1. Tåler temperaturer opp mot 1000°C uten spalling.',
+      moisture: 'Ekstremt lav kapillær absorpsjon. Kitosanet chelerer kloridioner og forsegler mikroporer.',
+      strength: '28-døgns trykkfasthet på 54.2 MPa; overgår tradisjonell anleggssement i saltvannsmiljø.',
+      durability: 'Garantert levetid over 120 år i arktisk tidevannssone uten armeringskorrosjon.',
+      fireRating: 'A1 Ubrennbar',
+      strengthMpa: 54.2,
+      durabilityYears: 120,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Kjemisk stabil etter herding. Ingen utlekking av tungmetaller eller frie aminer til det marine økosystemet.',
+    articles: [
+      {
+        id: 'art-29-1',
+        title: 'Chitosan-enhanced alkali-activated geopolymers for severe marine environment corrosion mitigation',
+        authors: 'Vanebo, S., Solberg, L. & Sundsfjord, K.',
+        year: 2026,
+        journal: 'Cement and Concrete Research',
+        summary: 'Kitosan-kompleksering i geopolymer-matrisen reduserte kloridinntrengning med 82% sammenlignet med referanse-betong i 24 måneders feltforsøk i Tromsøysundet.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-29-1',
+        question: 'Hva er optimal herdetemperatur for prefabrikkerte kaielementer under arktiske vinterforhold?',
+        importance: 'Medium',
+        status: 'Løst'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-29-1',
+        title: 'Langtidseksponering i tidevannssone ved Tromsø Havn',
+        hypothesis: 'Kloridkonsentrasjon på 50 mm dybde forblir under 0.05% etter 18 måneders flo og fjøre.',
+        independentVariable: 'Kitosanandel i bindemiddelet (1.5%, 3.5%, 5.0%)',
+        dependentVariable: 'Kloridprofil og trykkfasthetstap (MPa)',
+        status: 'Fullført',
+        startDate: '2025-10-01',
+        endDate: '2026-05-30',
+        results: '3.5% kitosan viste null armeringskorrosjon og intakt trykkfasthet på 54.2 MPa.',
+        logs: [
+          '01.10.2025: Nedsenket 24 testblokker ved Tromsø Havn.',
+          '30.05.2026: Blokker tatt opp og analysert med energidispersiv røntgenspektroskopi (EDX).'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-29-1', timestamp: '2026-05-30', parameter: 'strength', value: 54.2, label: 'Trykkfasthet (MPa)', experimentTitle: 'Tidevannseksponering Tromsø' },
+      { id: 'm-29-2', timestamp: '2026-06-05', parameter: 'gwp', value: 48.0, label: 'CO2-avtrykk (kg CO2 eq/m³ betong)', experimentTitle: 'SINTEF EPD Sertifisering' }
+    ]
+  },
+  {
+    id: 'mat-30',
+    name: 'Linolje- og Kaseinbasert Pustende Ytterpuss (Nordisk Bio-Kalk)',
+    category: 'Plantebaserte',
+    ownerId: 'res-14',
+    spaceIds: ['space-main', 'space-circular'],
+    description: 'Kulturhistorisk forankret og vitenskapelig optimalisert bio-kalkpuss basert på naturlig hydraulisk lesket kalk (NHL 3.5), koldpresset jomfrulinolje og melkeprotein (kaseinat). Gir en diffusjonsåpen, elastisk fasade med naturlig sopp- og mosedempende overflate egnet for både vernede bygg og moderne passivhus.',
+    chemicalComposition: 'Kalsiumhydroksid Ca(OH)2, kalsiumsilikathydrater, linolensyre-polymerer, kaseinat-kalsium chelater.',
+    biologicalComposition: 'Kaldpresset nordisk linolje (Linum usitatissimum) og mikronisert melkekasein fra økologisk melkebruk i Trøndelag.',
+    trl: 8,
+    applicationAreas: ['Vernede kulturminnebygg og kirker', 'Pussede fasader på halm- og hampbygg', 'Sokkelpuss i fuktutsatte kyststrøk', 'Innvendig fuktregulerende murpuss'],
+    suppliers: ['Mære Landbruksskole / NIKU', 'Nordisk Kalk AS', 'BioBuild Norge AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'Nordic Field Proven',
+      accreditationNumber: 'NO-NORDIC-2026-KLK30',
+      verifiedDate: '2026-04-22',
+      laboratory: 'NIKU Bygghåndverkslab & SINTEF Byggforsk',
+      leadInspector: 'Dr. Kari Sundsfjord',
+      reproducibilityScore: 98.5,
+      confidenceInterval: '95% KI (± 0.02)',
+      passedStandards: [
+        'NS-EN 998-1 (Spesifikasjon for mørtel for murverk - Del 1: Pussmørtel)',
+        'NS-EN 1015-18 (Bestemmelse av kapillær vannabsorpsjonskoeffisient: Klasse W2)',
+        'NS-EN 13501-1 (Brannklasse A1 Ubrennbar)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -0.85,
+      recycledContent: 60,
+      lifetime: 90,
+      circularity: '100% mineralsk og organisk kretsløpskompatibel'
+    },
+    testResults: {
+      fire: 'Uorganisk kalkmatrise gir 100% ubrennbarhet (Klasse A1). Ingen røykutvikling overhodet.',
+      moisture: 'Vannavvisende overflate (hydrofob dråpeeffekt fra linoljen) kombinert med ekstremt høy dampdiffusjonsåpning.',
+      strength: 'Trykkfasthet 5.2 MPa med overlegen elastisitet (E-modul tilpasset myke underlag som tre og halm).',
+      durability: 'Kalken fortsetter å karbonisere og styrkes over århundrer i nordisk uteklima.',
+      fireRating: 'A1 Ubrennbar',
+      strengthMpa: 5.2,
+      durabilityYears: 90,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Helt uten syntetiske biocider eller mikroplast. Alkaliske egenskaper forhindrer mugg naturlig.',
+    articles: [
+      {
+        id: 'art-30-1',
+        title: 'Casein-linseed oil modifications of natural hydraulic lime mortars for extreme cold-climate weather resistance',
+        authors: 'Sundsfjord, K., Dahl, J. & Rostova, E.',
+        year: 2026,
+        journal: 'Journal of Cultural Heritage',
+        summary: 'Studien dokumenterte 65% reduksjon i kapillært vannopptak uten tap av dampåpenhet, med null frostsprenging over 50 fryse-tinesykluser.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-30-1',
+        question: 'Hva er det maksimale innholdet av linolje før karboniseringshastigheten reduseres med mer enn 10%?',
+        importance: 'Lav',
+        status: 'Løst'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-30-1',
+        title: 'Akselerert fryse-tine testing i saltlake etter NS-EN 13687',
+        hypothesis: 'Kasein-linolje modifisert NHL 3.5 tåler 56 fryse-tine sykluser uten overflateavskalling.',
+        independentVariable: 'Kasein:Linolje masseforhold (1:1, 1:2, 2:1)',
+        dependentVariable: 'Massetap (g/m²) og dynamisk elastisitetsmodul',
+        status: 'Fullført',
+        startDate: '2026-01-15',
+        endDate: '2026-04-10',
+        results: 'Forholdet 1:2 ga kun 12 g/m² massetap (grensekrav er < 500 g/m²). Eksepsjonell frostmotstand.',
+        logs: [
+          '15.01.2026: Støpte 18 standard prismeprøver på NIKU lab.',
+          '10.04.2026: Målinger bekreftet og registrert i Nordisk Kalkdatabase.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-30-1', timestamp: '2026-04-10', parameter: 'strength', value: 5.2, label: 'Trykkfasthet (MPa)', experimentTitle: 'Akselerert fryse-tine testing' },
+      { id: 'm-30-2', timestamp: '2026-04-15', parameter: 'moisture', value: 0.02, label: 'Vanndampmotstand Sd (m)', experimentTitle: 'Dampdiffusjonsmåling' }
+    ]
+  },
+  {
+    id: 'mat-31',
+    name: 'Karbonfikserende Cyanobakterie Bio-Fliser (Photosynthetic Tiles)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-2',
+    spaceIds: ['space-main', 'space-sintef', 'space-circular'],
+    description: 'Selvdannende og karbonfikserende fasade- og belegningsfliser dyrket av fotosyntetiske cyanobakterier (Synechococcus) suspendert i et porøst hydrogel-nettverk av sand og biokjemisk utfelt kalsiumkarbonat. Absorberer og binder CO2 aktivt fra uteluften i hele sin operative levetid.',
+    chemicalComposition: 'Biogen kalsiumkarbonat CaCO3 (kalsitt og vateritt), silikasand, gelatin-agarose hydrogelmatrise.',
+    biologicalComposition: 'Synechococcus sp. levende og mineraliserte fotosyntetiske bakteriekulturer.',
+    trl: 6,
+    applicationAreas: ['Karbonnegative fasadekledninger', 'Pustende utendørs fortau og torg', 'Grønne vegger med mikroalge-samspill', 'Akustiske perforerte interiørfliser'],
+    suppliers: ['TU Delft Materials Lab', 'NTNU Biokjemi', 'BioMason / BioBuild'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'ISO/EN Standard',
+      accreditationNumber: 'NO-ISO-2026-CYA31',
+      verifiedDate: '2026-06-25',
+      laboratory: 'SINTEF Structural Lab & TU Delft',
+      leadInspector: 'Prof. Lars Solberg',
+      reproducibilityScore: 98.2,
+      confidenceInterval: '95% KI (± 0.025)',
+      passedStandards: [
+        'NS-EN 14411 (Keramiske fliser - Definisjoner, klassifisering og egenskaper)',
+        'NS-EN 13501-1 (Brannklasse A1 Ubrennbar mineralisering)',
+        'ISO 14040/44 (Karbonfikseringsvalidering: 1.8 kg CO2 sekvestrert per m² flis)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -3.2,
+      recycledContent: 85,
+      lifetime: 80,
+      circularity: '100% gjenvinnbar som kalkkilde eller jordforbedring'
+    },
+    testResults: {
+      fire: 'Ubrennbar klasse A1. Ingen organisk røykutvikling da hydrogelen er fullstendig forkalket.',
+      moisture: 'Porøsiteten gir overlegen drenering og motvirker dannelse av ishinne på utendørs flater.',
+      strength: 'Bøyebruddstyrke på 18.5 MPa og trykkfasthet på 32.0 MPa, fullt på høyde med tradisjonell porselensflis.',
+      durability: 'Høy bestandighet mot kjemisk forvitring; bakteriefikseringen styrker flisen når den utsettes for regn og CO2.',
+      fireRating: 'A1 Ubrennbar',
+      strengthMpa: 32.0,
+      durabilityYears: 80,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: '100% biokompatibelt. Cyanobakteriestammen er fri for mikrocystiner og endotoksiner.',
+    articles: [
+      {
+        id: 'art-31-1',
+        title: 'Continuous carbon sequestration in photosynthetic living building blocks using Synechococcus biomineralization',
+        authors: 'Solberg, L., Rostova, E. & Jensen, M.',
+        year: 2026,
+        journal: 'Matter (Cell Press)',
+        summary: 'Dokumenterte at hver kvadratmeter fasadeflis binder 1.8 kg atmosfærisk CO2 årlig via fotosyntese og mineralisering.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-31-1',
+        question: 'Hvordan påvirkes fotosyntesen i de mørkeste nordiske månedene fra november til januar?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-31-1',
+        title: 'Måling av kontinuerlig CO2-opptak i lukket strømningskammer',
+        hypothesis: 'Flisene absorberer minimum 50 mg CO2 per m² per time under 200 µmol fotoner/(m²·s).',
+        independentVariable: 'Lysintensitet og CO2-konsentrasjon i innløpsluft (400 ppm vs 800 ppm)',
+        dependentVariable: 'Netto karbonfangstrate (mg CO2/m²·t)',
+        status: 'Fullført',
+        startDate: '2026-03-05',
+        endDate: '2026-05-18',
+        results: 'Gjennomsnittlig opptak målt til 62 mg CO2/m²·t ved 400 ppm. Hypotese bekreftet.',
+        logs: [
+          '05.03.2026: Kalibrerte infrarød gassanalysator (IRGA) ved NTNU.',
+          '18.05.2026: Forsøk fullført og data overført til SINTEF EPD-database.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-31-1', timestamp: '2026-05-18', parameter: 'strength', value: 32.0, label: 'Trykkfasthet (MPa)', experimentTitle: 'Mekanisk kompresjonstest' },
+      { id: 'm-31-2', timestamp: '2026-05-20', parameter: 'gwp', value: -3.2, label: 'Netto livsløps GWP (kg CO2 eq/m²)', experimentTitle: 'CO2-opptaksanalyse' }
+    ]
+  },
+  {
+    id: 'mat-32',
+    name: 'Bio-harpiksbundet Halm- & Hamp-Lettplate (AgroBuild EcoCore)',
+    category: 'Plantebaserte',
+    ownerId: 'res-4',
+    spaceIds: ['space-main', 'space-circular'],
+    description: 'Strukturelle lettplater produsert av presset kornhalm og hampestilk bundet sammen med et 100% formaldehydfritt soyaprotein- og trelignin-bindemiddel. Erstatter tradisjonelle gips- og OSB-plater i innvendige skillevegger med 60% lavere vekt, enestående skruehold og negativt karbonfotavtrykk.',
+    chemicalComposition: 'Cellulose (52%), hemicellulose (24%), lignin (16%), soyaprotein-epoksy bioharpiks (8%).',
+    biologicalComposition: 'Østnorsk hvetehalm (Triticum aestivum) og industrihamp (Cannabis sativa) fra sertifiserte landbruksarealer.',
+    trl: 8,
+    applicationAreas: ['Innvendige skillevegger og himlinger', 'Erstatning for OSB og gipsplater', 'Bærelag for parkett og tregulv', 'Prefabrikkerte modulvegger'],
+    suppliers: ['AgroBuild Norge', 'Splitkon Wood', 'BioBuild Nordic AS'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-AGR32',
+      verifiedDate: '2026-06-30',
+      laboratory: 'SINTEF Byggforsk Oslo',
+      leadInspector: 'Dr. Johan Dahl',
+      reproducibilityScore: 99.0,
+      confidenceInterval: '95% KI (± 0.015)',
+      passedStandards: [
+        'NS-EN 312 (Sponplater - Krav og spesifikasjoner: Type P5 fuktbestandig plate)',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0 med integrert bio-flammehemmer)',
+        'NS-EN 320 (Skrueuttrekkingsmotstand: 1450 N)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -1.75,
+      recycledContent: 95,
+      lifetime: 60,
+      circularity: '100% komposterbar eller resirkulerbar til nye plater'
+    },
+    testResults: {
+      fire: 'Inneholder naturlig silisiumdioksid fra halmen og tilsatt bio-silikat som gir brannklasse B-s1, d0.',
+      moisture: 'Hydrofob soyaproteinmatrise sikrer at tykkelsessvelling etter 24 timers vannbad er under 6.5%.',
+      strength: 'Bøyefasthet på 19.5 MPa og E-modul på 2800 MPa; tåler direkte innfesting av tunge overskap uten spikerslag.',
+      durability: 'Uforgjengelig i tørre og tempererte innemiljøer med dokumentert levetid på 60+ år.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 19.5,
+      durabilityYears: 60,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Null VOC og 0.00 ppm formaldehyd. Testet og godkjent for BREEAM-NOR Excellent og Svanemerket bygging.',
+    articles: [
+      {
+        id: 'art-32-1',
+        title: 'Agricultural straw and hemp core biocomposites with soy-lignin adhesives for zero-emission interior partitioning',
+        authors: 'Dahl, J., Hauge, I. & Rostova, E.',
+        year: 2026,
+        journal: 'Industrial Crops and Products',
+        summary: 'Demonstrerte at soy-lignin-bindemiddelet gir samme mekaniske egenskaper som MDI- og fenolharpikser, med 92% lavere livsløpsutslipp og null formaldehydemisjon.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-32-1',
+        question: 'Hvordan kan kontinuerlig varmpressing optimaliseres for å øke produksjonshastigheten til 30 meter per minutt?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-32-1',
+        title: 'Fullskala skrueuttrekk- og skjærfasthetsprøving etter NS-EN 320',
+        hypothesis: 'Skruehold i platekjerne overgår standard 13 mm gipsplate med minst 400%.',
+        independentVariable: 'Soyaprotein-andel i bindemiddelet (6%, 8%, 10%)',
+        dependentVariable: 'Maksimal uttrekkskraft (N) for 4.0 x 40 mm treskruer',
+        status: 'Fullført',
+        startDate: '2026-04-05',
+        endDate: '2026-05-28',
+        results: '8% bindemiddel ga 1450 N uttrekkskraft (over 5 ganger høyere enn gips). Hypotese bekreftet.',
+        logs: [
+          '05.04.2026: Presset 20 testplater i laboratorieskala.',
+          '28.05.2026: Verifisert av SINTEF Byggforsk mekanisk prøvingslab.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-32-1', timestamp: '2026-05-28', parameter: 'strength', value: 19.5, label: 'Bøyefasthet (MPa)', experimentTitle: 'Fullskala mekanisk prøving' },
+      { id: 'm-32-2', timestamp: '2026-06-02', parameter: 'gwp', value: -1.75, label: 'Netto livsløpsutslipp GWP (kg CO2 eq/m²)', experimentTitle: 'EPD AgroBuild Livsløpsanalyse' }
+    ]
+  },
+  {
+    id: 'mat-33',
+    name: 'Hamp-Kalk Termisk Byggeblokk (HempCrete Nordic Block)',
+    category: 'Plantebaserte',
+    ownerId: 'res-3',
+    spaceIds: ['space-main', 'space-circular', 'space-sintef', 'space-personal'],
+    description: 'Karbonnegativ termisk byggeblokk sammensatt av industriell hampestrie (Cannabis sativa) og naturlig hydraulisk kalk (NHL 3.5). Blokkene regulerer inneklimaet passivt gjennom kontinuerlig fuktighetsbuffring og fungerer som en brannsikker, varmeisolerende veggkjerne med over 100 kg CO2 sekvestrert per kubikkmeter.',
+    chemicalComposition: 'Cellulose (44%), hemicellulose (18%), kalsiumhydroksid Ca(OH)2 (22%), kalsiumkarbonat CaCO3 (12%), biogene silikater (4%).',
+    biologicalComposition: 'Stengelved (hurds) fra sertifisert østnorsk industrihamp og bio-kalk fra nordiske brudd.',
+    trl: 8,
+    applicationAreas: ['Monolittiske yttervegger i trebygg', 'Etterisolering av historiske bindingsverksbygg', 'Akustiske og brannskillende innervegger', 'Passivhus og nullutslippsboliger'],
+    suppliers: ['Norsk Hampindustri AS', 'Nordic Hempcrete Solutions', 'SINTEF Materialpartner'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-HMP33',
+      verifiedDate: '2026-07-02',
+      laboratory: 'SINTEF Byggforsk & NTNU Gløshaugen',
+      leadInspector: 'Dr. Johan Dahl',
+      reproducibilityScore: 99.2,
+      confidenceInterval: '95% KI (± 0.012)',
+      passedStandards: [
+        'ISO 8301 (Termisk konduktivitet: λ = 0.068 W/(m·K))',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0 ikke brennbar kjerne)',
+        'NS-EN 772-1 (Trykkfasthet for murblokker: 1.85 MPa)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -108.0,
+      recycledContent: 100,
+      lifetime: 100,
+      circularity: 'Fullstendig knusbar til kalkberiket jordforbedring eller resirkulerbar i ny mørtel'
+    },
+    testResults: {
+      fire: 'Uovertruffen motstand mot åpen flamme; kalkmineraliseringen danner et forkullet beskyttelseslag uten røyk eller giftige gasser (B-s1, d0).',
+      moisture: 'Eksepsjonell dampdiffusjonsåpenhet (Sd = 0.03 m) og hygroskopisk bufferkapasitet på 2.1 g/(m²·%RF).',
+      strength: 'Trykkfasthet på 1.85 MPa gir tilstrekkelig bæreevne som utfyllingsvegg i bærekonstruksjoner av massivtre.',
+      durability: 'Kalken herder gradvis via karbonatisering med atmosfærisk CO2, noe som gjør blokken hardere over tid.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 1.85,
+      durabilityYears: 100,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: '100% giftfri og hypoallergen. Nøytraliserer muggsporer og bakterier naturlig via høy pH (pH 11.5 under montering).',
+    articles: [
+      {
+        id: 'art-33-1',
+        title: 'Hygrothermal and carbon-sequestration performance of Nordic hemp-lime blocks in cold sub-arctic climates',
+        authors: 'Dahl, J., Solberg, L. & Møller, E.',
+        year: 2026,
+        journal: 'Journal of Cleaner Production',
+        summary: 'Dokumenterte at hamp-kalkblokker kutter oppvarmingsbehov med 28% på grunn av dynamisk latent varmelagring i fuktporer.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-33-1',
+        question: 'Kan herdetiden reduseres fra 28 til 7 dager ved bruk av biogene karbonatiseringskatalysatorer?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-33-1',
+        title: 'Dynamisk klimakammertesting av fuktbufferverdi (MBV) etter NORDTEST',
+        hypothesis: 'Hamp-kalkblokk oppnår MBV over 2.0 g/(m²·%RF), definert som utmerket fuktbuffer.',
+        independentVariable: 'Relativ fuktighetssyklus (33% til 75% RF ved 20°C)',
+        dependentVariable: 'Vektendring per kvadratmeter per %RF',
+        status: 'Fullført',
+        startDate: '2026-05-10',
+        endDate: '2026-06-20',
+        results: 'Gjennomsnittlig MBV målt til 2.14 g/(m²·%RF). Hypotese bekreftet.',
+        logs: [
+          '10.05.2026: Prøvelegemer kondisjonert ved 23°C og 50% RF.',
+          '20.06.2026: Avsluttet 16 fullstendige 24-timers sykluser i SINTEF klimakammer.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-33-1', timestamp: '2026-06-20', parameter: 'gwp', value: -108.0, label: 'Livsløps GWP (kg CO2 eq/m³)', experimentTitle: 'EPD Hamp-kalk livsløp' },
+      { id: 'm-33-2', timestamp: '2026-06-22', parameter: 'strength', value: 1.85, label: 'Trykkfasthet (MPa)', experimentTitle: 'Akkreditert kompresjonstest' }
+    ]
+  },
+  {
+    id: 'mat-34',
+    name: 'Selvhelende Bakterie-Biobetong (Bacillus pseudofirmus Bio-Crack Filler)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-5',
+    spaceIds: ['space-main', 'space-sintef', 'space-marine', 'space-personal'],
+    description: 'Strukturell betong tilsatt mikrokapsler med sporer fra alkalifile bakterier (Bacillus pseudofirmus) og kalsiumlaktat. Når sprekker oppstår og vann siver inn, vekkes bakteriene og feller ut kalsiumkarbonat (kalsitt) som tetter sprekken fullstendig innen 21 dager.',
+    chemicalComposition: 'Biologisk utfelt kalsitt CaCO3 (>98%), kalsiumlaktat Ca(C3H5O3)2, silikater og bakterielle peptidoglykaner.',
+    biologicalComposition: 'Bakteriesporer av Bacillus pseudofirmus innkapslet i porøse ekspanderte leirepartikler (Leca).',
+    trl: 7,
+    applicationAreas: ['Undersjøiske fundamenter og brokar', 'Tunneler og underjordiske parkeringskjellere', 'Avløpskummer og drikkevannsreservoarer', 'Marine kaianlegg utsatt for saltvann'],
+    suppliers: ['Heidelberg Materials BioNord', 'BioBetong Norge', 'SINTEF Kystinfrastruktur'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-BAC34',
+      verifiedDate: '2026-06-25',
+      laboratory: 'SINTEF Bygg & Konstruksjon Trondheim',
+      leadInspector: 'Dr. Espen Lind',
+      reproducibilityScore: 98.6,
+      confidenceInterval: '95% KI (± 0.018)',
+      passedStandards: [
+        'NS-EN 12390-3 (Trykkfasthet betong: 52.4 MPa ved 28 dager)',
+        'NS-EN 12390-8 (Vanninntrengingsdybde under trykk: < 5 mm etter selvheling)',
+        'RILEM TC 221-SHC (Validering av biologisk sprekkheling opp til 0.8 mm)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: 38.0,
+      recycledContent: 45,
+      lifetime: 120,
+      circularity: 'Resirkulerbart som høyverdig tilslag til ny betong eller kystforbygninger'
+    },
+    testResults: {
+      fire: 'Ubrennbar klasse A1 etter NS-EN 13501-1; de biologiske sporene forblir inaktive i betongmatrisen inntil vanninntrenging oppstår.',
+      moisture: 'Selvtetter aktive lekkasjesprekker på opptil 0.8 mm bredde under hydrostatisk vanntrykk innen tre uker.',
+      strength: 'Karakteristisk trykkfasthet B35/B45 (52.4 MPa), gjenvinner over 88% av opprinnelig strekkfasthet etter sprekkheling.',
+      durability: 'Forhindrer klorid- og oksygenkorrosjon på armeringsjern, dobler levetiden til marine betongkonstruksjoner.',
+      fireRating: 'A1 Ubrennbar',
+      strengthMpa: 52.4,
+      durabilityYears: 120,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Ufarlig og ikke-patogen bakteriestamme (risikogruppe 1). Forseglet i betongkrystallene.',
+    articles: [
+      {
+        id: 'art-34-1',
+        title: 'Long-term healing efficiency of spore-based bio-concrete in harsh Nordic saline splash zones',
+        authors: 'Lind, E., Vanebo, S. & Jonkers, H.',
+        year: 2026,
+        journal: 'Cement and Concrete Research',
+        summary: 'Påviste 100% tetting av mikrosprekker i prøvelegemer nedsenket i Trondheimsfjorden over 18 måneder.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-34-1',
+        question: 'Hvor mange helingssykluser kan de innkapslede bakteriesporene gjennomgå over en 50-årsperiode?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-34-1',
+        title: 'Akkreditert permeabilitetstest etter simulert rissdannelse',
+        hypothesis: 'Vanngjennomstrømning gjennom 0.5 mm riss reduseres med over 90% etter 21 dager i vannbad.',
+        independentVariable: 'Vannherdingstemperatur (8°C kystvann vs 20°C ferskvann)',
+        dependentVariable: 'Vannstrømning (ml/min) under 2 bar trykk',
+        status: 'Fullført',
+        startDate: '2026-04-15',
+        endDate: '2026-05-30',
+        results: 'Vannstrømning redusert fra 450 ml/min til 12 ml/min (97.3% reduksjon). Hypotese bekreftet.',
+        logs: [
+          '15.04.2026: Generert kontrollerte 0.5 mm riss via trepunkts bøyeprøving.',
+          '30.05.2026: Kalsittutfelling mikroskopert med SEM-EDX ved NTNU.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-34-1', timestamp: '2026-05-30', parameter: 'strength', value: 52.4, label: 'Trykkfasthet 28d (MPa)', experimentTitle: 'NS-EN 12390-3 prøving' },
+      { id: 'm-34-2', timestamp: '2026-06-01', parameter: 'gwp', value: -42.0, label: 'Netto karbonbinding (kg CO2 eq/m³)', experimentTitle: 'Kalsinerings- og EPD-analyse' }
+    ]
+  },
+  {
+    id: 'mat-35',
+    name: 'Suberin-Aerogel Termisk Superisolasjon (Bio-Cork Aerogel)',
+    category: 'Tre & Kork',
+    ownerId: 'res-10',
+    spaceIds: ['space-main', 'space-sintef', 'space-personal'],
+    description: 'Ultralett, nanoporøs superisolasjonsmatte fremstilt av oppsirkulert korkbark (Quercus suber) og bio-silika fra rishullaske. Med en termisk konduktivitet på kun 0.019 W/(m·K) muliggjør materialet slanke, høyeffektive passivhusvegger uten syntetisk polyuretan eller EPS.',
+    chemicalComposition: 'Suberin (48%), lignin (24%), nanostrukturert bio-silika SiO2 (16%), ceroid-vokser (8%), tannin (4%).',
+    biologicalComposition: 'Bærekraftig innhøstet korkbark kombinert med bio-baserte aerogeler via superkritisk CO2-tørking.',
+    trl: 6,
+    applicationAreas: ['Slanke ytterveggkonstruksjoner i passivhus', 'Innvendig etterisolering av fredede byfasader', 'Kjølerom og fryselager i næringsbygg', 'Kuldebrobrytere rundt vinduer og balkonginnfestinger'],
+    suppliers: ['Nordic Aerogel AS', 'Amorim Cork Nordics', 'SINTEF Termisk Lab'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'RISE Accredited',
+      accreditationNumber: 'SE-RISE-2026-CRK35',
+      verifiedDate: '2026-07-10',
+      laboratory: 'RISE Bygg & Treteknikk Borås',
+      leadInspector: 'Dr. Solveig Skoglund',
+      reproducibilityScore: 97.9,
+      confidenceInterval: '95% KI (± 0.021)',
+      passedStandards: [
+        'ISO 8301 (Termisk konduktivitet superisolasjon: λ = 0.019 W/(m·K))',
+        'NS-EN 1602 (Densitet isolasjonsmaterialer: 68 kg/m³)',
+        'NS-EN 13501-1 (Brannklasse C-s1, d0 med naturlig suberin-flammehemming)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -54.0,
+      recycledContent: 88,
+      lifetime: 75,
+      circularity: 'Gjenvinnbar som isolasjonsgranulat eller 100% biologisk nedbrytbar industrikompost'
+    },
+    testResults: {
+      fire: 'Suberinet danner en naturlig glassaktig koksbarriere som kveler oksygentilførsel (C-s1, d0).',
+      moisture: 'Hydrofob overflate med kontaktvinkel på 135°; absorberer under 0.8 volumprosent fuktighet ved 95% RF.',
+      strength: 'Trykkspenning ved 10% deformasjon på 180 kPa; tåler mekanisk innspenning i stenderverk.',
+      durability: 'Fullstendig upåvirket av fuktsvigninger, biologisk nedbrytning og maur/skadeinsekter over 75+ år.',
+      fireRating: 'C-s1, d0',
+      strengthMpa: 0.18,
+      durabilityYears: 75,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Fri for støvfibre og petrokjemiske isocyanater. Dokumentert null avgassing i henhold til AgBB og M1-kravene.',
+    articles: [
+      {
+        id: 'art-35-1',
+        title: 'Nanoporous suberin-silica hybrid aerogels with ultra-low thermal conductivity for heritage building retrofitting',
+        authors: 'Skoglund, S., Berg, T. & Jensen, M.',
+        year: 2026,
+        journal: 'Advanced Functional Materials',
+        summary: 'Rapporterte superisolerende egenskaper med 60% tynnere veggoppbygning enn tradisjonell mineralull.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-35-1',
+        question: 'Hvordan kan industriell superkritisk CO2-tørking skaleres opp for å halvere produksjonskostnaden?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-35-1',
+        title: 'Hot-plate konduktivitetsmåling etter akselerert aldring ved 70°C og 90% RF',
+        hypothesis: 'Lambda-verdien forblir under 0.021 W/(m·K) etter 500 timers fuktvarme-belastning.',
+        independentVariable: 'Eksponeringstid i klimaskap (0 til 500 timer)',
+        dependentVariable: 'Termisk konduktivitet λ (W/mK)',
+        status: 'Fullført',
+        startDate: '2026-05-02',
+        endDate: '2026-06-15',
+        results: 'Målt lambda etter 500 timer var 0.0194 W/(m·K). Hypotese bekreftet.',
+        logs: [
+          '02.05.2026: Monterte prøvestykker i calibrated guarded hot plate (GHP).',
+          '15.06.2026: Ingen porekollaps observert ved CT-skanning.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-35-1', timestamp: '2026-06-15', parameter: 'gwp', value: -54.0, label: 'Livsløps GWP (kg CO2 eq/m³)', experimentTitle: 'LCA Suberin-aerogel' },
+      { id: 'm-35-2', timestamp: '2026-06-18', parameter: 'strength', value: 0.18, label: 'Trykkfasthet 10% (MPa)', experimentTitle: 'Mekanisk kompresjon' }
+    ]
+  },
+  {
+    id: 'mat-36',
+    name: 'Marint Kollagen & Skjell Bio-Glava (OceanWool Insulation)',
+    category: 'Annet',
+    ownerId: 'res-9',
+    spaceIds: ['space-main', 'space-marine', 'space-circular'],
+    description: 'Isolasjonsmatter spunnet av marint kollagenfiber fra hvitfiskrestråstoff bundet med finmalt kalsiumkarbonat fra kamskjellavfall. Erstatter tradisjonell steinull og glassull med overlegen akustisk demping og null hud- eller lungeirritasjon under montering.',
+    chemicalComposition: 'Type-I marint kollagen (56%), kalsiumkarbonat CaCO3 fra muslingskjell (32%), natriumalginat kryssbinder (12%).',
+    biologicalComposition: 'Kollagen ekstrahert fra restråstoff fra torsk og sei (Gadus morhua) og kamskjellskall fra kystnæringen i Trøndelag.',
+    trl: 6,
+    applicationAreas: ['Termisk isolasjon i tak og vegger', 'Akustisk lydfelle i ventilasjonskanaler og etasjeskiller', 'Flytende gulvisolasjon mot trinnlyd', 'Skipsinnredning og offshore boligkvarter'],
+    suppliers: ['OceanWool Marine AS', 'Biomarine Resirkulering Tromsø', 'SINTEF Ocean'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-OCW36',
+      verifiedDate: '2026-06-18',
+      laboratory: 'SINTEF Ocean & NIVA Marine Lab',
+      leadInspector: 'Dr. Sindre Vanebo',
+      reproducibilityScore: 98.1,
+      confidenceInterval: '95% KI (± 0.024)',
+      passedStandards: [
+        'ISO 354 (Akustisk absorpsjon: NRC 0.94 ved 100 mm tykkelse)',
+        'NS-EN 12667 (Termisk konduktivitet: λ = 0.034 W/(m·K))',
+        'NS-EN 13501-1 (Brannklasse B-s1, d0 med mineralsk skjellskjold)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -38.5,
+      recycledContent: 100,
+      lifetime: 60,
+      circularity: '100% bio-sirkulært marin biprodukt, fullstendig komposterbar til nitrogengjødsel'
+    },
+    testResults: {
+      fire: 'Kalsiumkarbonatpartiklene fra skjellene fungerer som en naturlig varmeabsorber og slukker glør umiddelbart (B-s1, d0).',
+      moisture: 'Kollagenfibrene buffer fuktighet uten å miste spenst eller isolasjonsevne (tykkelsestap < 2% etter fuktsyklus).',
+      strength: 'Strekkfasthet i fiberlengderetning på 0.42 MPa, utmerket elastisk gjenvinning etter komprimering.',
+      durability: 'Alginatbinding forhindrer nedsmuldring; behandlet med bio-sitronsyre mot bakterievekst.',
+      fireRating: 'B-s1, d0',
+      strengthMpa: 0.42,
+      durabilityYears: 60,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Fullstendig hudvennlig. Krever ingen vernebriller eller støvmaske under montasje.',
+    articles: [
+      {
+        id: 'art-36-1',
+        title: 'Circular upcycling of fish skin collagen and seashell biomineral fibers into acoustic insulation mats',
+        authors: 'Vanebo, S., Møller, E. & Lindholm, M.',
+        year: 2026,
+        journal: 'Bioresource Technology',
+        summary: 'Beviste at kollagenbasert isolasjon oppnår likeverdige termiske egenskaper som glassull, med 14 dB bedre trinnlydsreduksjon.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-36-1',
+        question: 'Hvordan påvirkes isolasjonens langtidselastisitet ved eksponering for konstant 90% RF over 10 år?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-36-1',
+        title: 'Måling av lydabsorpsjon i impedansrør etter ISO 10534-2',
+        hypothesis: 'Lydabsorpsjonskoeffisient ved 500–2000 Hz overstiger 0.90 for 75 mm OceanWool-matte.',
+        independentVariable: 'Kollagenfiberdiameter og andel finmalt kalsiumkarbonat (20% vs 35%)',
+        dependentVariable: 'Normal incidens absorpsjonskoeffisient α',
+        status: 'Fullført',
+        startDate: '2026-04-20',
+        endDate: '2026-05-25',
+        results: 'Maksimal absorpsjon på 0.96 målt ved 1000 Hz med 32% skjellpartikler. Hypotese bekreftet.',
+        logs: [
+          '20.04.2026: Kalibrert 4-mikrofon impedansrør ved SINTEF Akustikk.',
+          '25.05.2026: Sluttrapport overlevert NIVA akkrediteringsorgan.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-36-1', timestamp: '2026-05-25', parameter: 'gwp', value: -38.5, label: 'Livsløps GWP (kg CO2 eq/m³)', experimentTitle: 'OceanWool LCA EPD' },
+      { id: 'm-36-2', timestamp: '2026-05-28', parameter: 'strength', value: 0.42, label: 'Strekkfasthet (MPa)', experimentTitle: 'Mekanisk fiberstrekk' }
+    ]
+  },
+  {
+    id: 'mat-37',
+    name: 'Arakne-Spidroin Bio-Armering (SpiderSilk Reinforced Rebar)',
+    category: 'Annet',
+    ownerId: 'res-8',
+    spaceIds: ['space-main', 'space-sintef', 'space-personal'],
+    description: 'Høystyrke bio-armeringsstenger produsert av biosyntetiske edderkoppsilkeproteiner (rekombinant spidroin) støpt i en bio-basert linoljeharpiks. Har tre ganger høyere strekkfasthet enn konstruksjonsstål per vektenhet og ruster aldri, noe som revolusjonerer betongarmert kystbygging.',
+    chemicalComposition: 'Rekombinant Spidroin MaSp1/MaSp2 (72%), epoksidert bio-linoljematrise (24%), silankobler (4%).',
+    biologicalComposition: 'Mikrobielt fermentert silke-protein fra presisjonsgjæring i bioreaktorer, spunnet til mikrofibriller.',
+    trl: 5,
+    applicationAreas: ['Ikke-korroderende armering i kystbetong og brukonstruksjoner', 'Armering for tynne bio-kompositte fasadeelementer', 'Jordskjelvsikring med ekstrem energiabsorpsjon', 'Magnetresonansrom (MR) på sykehus uten metallinterferens'],
+    suppliers: ['Nordic Spidroin Biotech', 'BioArmering Norge AS', 'NTNU Nanoteknologilab'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-SPD37',
+      verifiedDate: '2026-07-15',
+      laboratory: 'NTNU Nanomekanikk & SINTEF Konstruksjon',
+      leadInspector: 'Dr. Kristin Nygård',
+      reproducibilityScore: 97.4,
+      confidenceInterval: '95% KI (± 0.028)',
+      passedStandards: [
+        'ISO 10406-1 (Mekanisk prøving av fiberarmert polymer for betong: Strekkfasthet 1420 MPa)',
+        'ISO 527-4 (Bruddforlengelse 26.5% - overlegen duktilitet)',
+        'NS-EN 13501-1 (Brannklasse B-s1 for innstøpt komposittstang)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -12.0,
+      recycledContent: 60,
+      lifetime: 150,
+      circularity: 'Enzymatisk spaltbar for gjenvinning av proteinmonomerer eller resirkulerbar som bio-plastfiller'
+    },
+    testResults: {
+      fire: 'Når innstøpt i betong er brannmotstanden lik konvensjonell armering; ved fri eksponering forkuller silkeproteinet uten drypp.',
+      moisture: 'Total immunitet mot kloridangrep og saltvann; 0% korrosjonsfare uavhengig av betongens rissvidde.',
+      strength: 'Eksepsjonell strekkfasthet på 1420 MPa og elastisitetsmodul på 78 GPa med uovertruffen seighet.',
+      durability: 'Teoretisk levetid på over 150 år i marint saltvannsmiljø uten degradering.',
+      fireRating: 'B-s1 innstøpt',
+      strengthMpa: 1420.0,
+      durabilityYears: 150,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: '100% biokompatibelt materiale godkjent for medisinske implantater, null kjemisk helserisiko for arbeidere.',
+    articles: [
+      {
+        id: 'art-37-1',
+        title: 'Recombinant spidroin microcomposite rebars for non-corrosive marine concrete infrastructure',
+        authors: 'Nygård, K., Solberg, L. & Dahl, J.',
+        year: 2026,
+        journal: 'Nature Materials Biocomposites',
+        summary: 'Viste at bio-spidroinarmering motstår 2000 timers akselerert kloridkorrosjon uten detekterbart styrketap.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-37-1',
+        question: 'Hvordan kan fermenteringsutbyttet i gjæringstankene økes fra 15 g/l til 45 g/l for å nå prisparitet med rustfritt stål?',
+        importance: 'Høy',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-37-1',
+        title: 'Mekanisk strekkprøving og forankringslengdetest i høyfast betong',
+        hypothesis: 'Spidroinstang oppnår full forankringskapasitet med 20% kortere forankringslengde enn kamstål B500NC.',
+        independentVariable: 'Overflaterilling og ribbegeometri på bio-stangen',
+        dependentVariable: 'Heftfasthet (bond strength) i MPa etter NS-EN 10080',
+        status: 'Fullført',
+        startDate: '2026-05-12',
+        endDate: '2026-06-28',
+        results: 'Heftfasthet målt til 18.2 MPa mot standard ståls 14.5 MPa. Hypotese bekreftet.',
+        logs: [
+          '12.05.2026: Støpte uttrekkssylindere med 16 mm spidroinstenger.',
+          '28.06.2026: Verifisert brudd i stang uten glidning i betongen.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-37-1', timestamp: '2026-06-28', parameter: 'strength', value: 1420.0, label: 'Strekkfasthet (MPa)', experimentTitle: 'Mekanisk strekktest ISO 10406-1' },
+      { id: 'm-37-2', timestamp: '2026-07-02', parameter: 'moisture', value: 1.8, label: 'Fuktopptak etter 90d i saltlake (%)', experimentTitle: 'Kloridkorrosjonsmodell' }
+    ]
+  },
+  {
+    id: 'mat-38',
+    name: 'Nordisk Pil- og Hassel-Bioflettverk (Salix Architectural Weave)',
+    category: 'Plantebaserte',
+    ownerId: 'res-7',
+    spaceIds: ['space-main', 'space-circular'],
+    description: 'Ventilerte klimaskjermer og solavskjermingspaneler flettet av hurtigvoksende nordisk kurvpil (Salix viminalis) og hassel, impregnert med varmpresset furutjære og bivoks. Skaper en levende, biologisk solskjerming som endrer farge og duft med årstidene og absorberer vindkrefter elastisk.',
+    chemicalComposition: 'Cellulose (49%), hemicellulose (23%), lignin (19%), furutjæresyrer (6%), bivoks (3%).',
+    biologicalComposition: 'Høstet ett- og toårig kurvpil (Salix viminalis) fra norske flomsoner og furutjære fra Trøndelag.',
+    trl: 8,
+    applicationAreas: ['Ytre ventilerte fasadeskjermer', 'Integrerte solavskjermingslameller på næringsbygg', 'Støyskjermer langs veier med naturlig vegetasjon', 'Utearealer, pergolaer og takhager'],
+    suppliers: ['Nordic Salix Bygg AS', 'Trøndelag Tjære & Tre', 'BioFasade Norge'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-SLX38',
+      verifiedDate: '2026-05-30',
+      laboratory: 'NIBIO Divisjon for Skog og Tre & SINTEF Byggforsk',
+      leadInspector: 'Dr. Camilla Frost',
+      reproducibilityScore: 98.9,
+      confidenceInterval: '95% KI (± 0.015)',
+      passedStandards: [
+        'NS-EN 350-2 (Holdbarhet for treverk: Råteklasse 1 Meget holdbart etter tjærebehandling)',
+        'ISO 4892-3 (UV-akselerert forvitringsprøving: 3500 timer uten fiberseparasjon)',
+        'NS-EN 13501-1 (Brannklasse C-s2, d0 for utvendig ventilert kledning)'
+      ],
+      badgeLevel: 'Gold'
+    },
+    epd: {
+      gwp: -86.5,
+      recycledContent: 100,
+      lifetime: 45,
+      circularity: '100% biologisk nedbrytbar eller gjenbrukbar som flis til bio-kompositter og jordforbedring'
+    },
+    testResults: {
+      fire: 'Furutjære og voks danner et herdet skjold som motvirker overflateflamme (Klasse C-s2, d0).',
+      moisture: 'Flettverket har en naturlig åpen struktur som tørker på få minutter etter slagregn og hindrer soppvekst.',
+      strength: 'Bøyestyrke på 65 MPa; tåler vindkast opptil 45 m/s (orkanstyrke) ved fleksibel bøyedeformasjon.',
+      durability: 'Dokumentert levetid på 45+ år med enkel etteroljing hvert 10. år.',
+      fireRating: 'C-s2, d0',
+      strengthMpa: 65.0,
+      durabilityYears: 45,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Naturlig aromatisk furuduft, avgir ingen syntetiske kjemikalier eller mikroplast.',
+    articles: [
+      {
+        id: 'art-38-1',
+        title: 'Bio-architectural shading screens from coppiced Salix viminalis with traditional pine tar weatherproofing',
+        authors: 'Frost, C., Lindholm, M. & Sundsfjord, K.',
+        year: 2026,
+        journal: 'Building and Environment',
+        summary: 'Dokumenterte 34% reduksjon i kjølebehov om sommeren og 100% resirkulerbarhet ved endt levetid.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-38-1',
+        question: 'Kan flettemønsteret robotiseres med 6-akset kranarm for storskala prefabrikasjon?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-38-1',
+        title: 'Fullskala vindlast- og aerodynamisk bøyeprøving i vindtunnel',
+        hypothesis: 'Flettverkspanel tåler 40 m/s vindhastighet med reversibel elastisk utbøyning under 50 mm.',
+        independentVariable: 'Vindhastighet (10 til 45 m/s) og flettetetthet (70% vs 85% dekning)',
+        dependentVariable: 'Maksimal utbøyning og restdeformasjon etter vindkast',
+        status: 'Fullført',
+        startDate: '2026-04-02',
+        endDate: '2026-05-15',
+        results: 'Maksimal utbøyning ved 45 m/s var 38 mm; null restdeformasjon etter avlastning. Hypotese bekreftet.',
+        logs: [
+          '02.04.2026: Monterte 2.4 x 1.2 m flettverkspanel i SINTEF vindtunnel.',
+          '15.05.2026: Testserie fullført uten knekkskader på pilestilker.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-38-1', timestamp: '2026-05-15', parameter: 'gwp', value: -86.5, label: 'Livsløps GWP (kg CO2 eq/m² fasade)', experimentTitle: 'Salix LCA' },
+      { id: 'm-38-2', timestamp: '2026-05-18', parameter: 'strength', value: 65.0, label: 'Bøyestyrke (MPa)', experimentTitle: 'Vindlast- og bøyeprøving' }
+    ]
+  },
+  {
+    id: 'mat-39',
+    name: 'Kiselalge Diatomitt-Gipsplate (Diatomite Active Board)',
+    category: 'Alger & Bakterier',
+    ownerId: 'res-14',
+    spaceIds: ['space-main', 'space-circular'],
+    description: 'Fuktregulerende og luktnøytraliserende innvendig bygningsplate laget av fossile kiselalgeskall (Diatomite) bundet med kasein og plantestivelse. Den mikroporøse strukturen har et overflateareal på over 60 m²/g som adsorberer flyktige organiske forbindelser (VOC) og regulerer relativ luftfuktighet passivt.',
+    chemicalComposition: 'Amorf biogen silika SiO2 (74%), kalsiumkarbonat (12%), kaseinprotein (8%), modifisert hvetestivelse (6%).',
+    biologicalComposition: 'Kiselalgeskall (Diatomeae) fra skandinaviske sedimentære kilder og melkekasein fra overskuddsmelk.',
+    trl: 7,
+    applicationAreas: ['Innvendige vegger i soverom og stuer for optimalt soveklima', 'Baderomsvegger utenfor våtsone for dugghindring', 'Skoler, barnehager og kontorer med høye krav til inneklima', 'Arkiver og museer med strenge krav til fuktstabilitet'],
+    suppliers: ['Nordic Diatomite Board AS', 'BioGips Norden', 'Inneklima Norge'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-DTM39',
+      verifiedDate: '2026-06-12',
+      laboratory: 'SINTEF Byggforsk Oslo Inneklimagruppen',
+      leadInspector: 'Dr. Kari Sundsfjord',
+      reproducibilityScore: 99.3,
+      confidenceInterval: '95% KI (± 0.011)',
+      passedStandards: [
+        'NORDTEST NT BUILD 482 (Fuktbufferverdi: 2.3 g/(m²·%RF) - Klasse Utmerket)',
+        'ISO 16000-6 (Adsorpsjon av formaldehyd og VOC: 85% reduksjon innen 24 timer)',
+        'NS-EN 13501-1 (Brannklasse A2-s1, d0 ubrennbar kjerne)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -22.0,
+      recycledContent: 92,
+      lifetime: 70,
+      circularity: 'Kan knuses og gjenbrukes som jordforbedringsmiddel eller råstoff til ny plateproduksjon'
+    },
+    testResults: {
+      fire: 'Høyt silikatinnhold gir tilnærmet ubrennbar plate i klasse A2-s1, d0 uten giftig røyk.',
+      moisture: 'Absorberer opptil 350 ml vann per m² uten å miste formstabilitet, forhindrer kondens og dugg på speil og vinduer.',
+      strength: 'Bøyestrekkfasthet på 6.8 MPa og skruehold på 620 N, overgår standard 12.5 mm gipsplate.',
+      durability: 'Mineralstrukturen er uorganisk og uforgjengelig; muggsopp kan ikke vokse på den porøse diatomitten.',
+      fireRating: 'A2-s1, d0',
+      strengthMpa: 6.8,
+      durabilityYears: 70,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: 'Eksepsjonelt gunstig for astmatikere og allergikere. Fjerner lukt og VOC fra inneluften kontinuerlig.',
+    articles: [
+      {
+        id: 'art-39-1',
+        title: 'Passive moisture buffering and indoor formaldehyde remediation by bio-casein diatomaceous earth boards',
+        authors: 'Sundsfjord, K., Dahl, J. & Frost, C.',
+        year: 2026,
+        journal: 'Indoor Air',
+        summary: 'Dokumenterte at rom kledd med diatomittplater holdt relativ fuktighet stabilt mellom 45% og 55% uavhengig av uteklima.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-39-1',
+        question: 'Hvor raskt mettes diatomittens VOC-adsorpsjonskapasitet i sterkt forurensede bymiljøer før regenerering er nødvendig?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-39-1',
+        title: 'Formaldehyd-nedbrytning i 1 m³ ventilert testkammer etter ISO 16000',
+        hypothesis: 'Luftkonsentrasjon av formaldehyd reduseres med over 80% innen 24 timer ved romtemperatur.',
+        independentVariable: 'Plateoverflateareal i kammeret (0.5 m² vs 1.2 m²)',
+        dependentVariable: 'Gjenværende formaldehydkonsentrasjon (µg/m³)',
+        status: 'Fullført',
+        startDate: '2026-05-05',
+        endDate: '2026-06-08',
+        results: 'Konsentrasjon falt fra 120 µg/m³ til 14 µg/m³ (88.3% fjerning). Hypotese bekreftet.',
+        logs: [
+          '05.05.2026: Dosert formaldehydgass i forseglet kammer.',
+          '08.06.2026: Kromatografisk analyse fullført ved SINTEF Oslo.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-39-1', timestamp: '2026-06-08', parameter: 'gwp', value: -22.0, label: 'Livsløps GWP (kg CO2 eq/m²)', experimentTitle: 'Diatomite LCA EPD' },
+      { id: 'm-39-2', timestamp: '2026-06-10', parameter: 'strength', value: 6.8, label: 'Bøyestyrke (MPa)', experimentTitle: 'Mekanisk bøyeprøving' }
+    ]
+  },
+  {
+    id: 'mat-40',
+    name: 'Torvmose-Kompositt Dreneringsmatte (Sphagnum BioDrain Sheet)',
+    category: 'Plantebaserte',
+    ownerId: 'res-12',
+    spaceIds: ['space-main', 'space-sintef', 'space-marine'],
+    description: 'Komprimert, perforert drenerings- og radonsikringsmatte laget av regenerert hvitmose (Sphagnum magellanicum) og kokos-/jutefibre. Monteres på utsiden av kjelleryttervegger og under såleblokker. Mosen absorberer 25 ganger sin egen vekt i vann, filtrerer sedimenter og har en naturlig sur pH som hindrer kjemisk forvitring.',
+    chemicalComposition: 'Sphagnan-polysakkarider (58%), cellulose (22%), lignin (12%), pektin og fenoliske syrer (8%).',
+    biologicalComposition: 'Bærekraftig høstet Sphagnum-torvmose fra kontrollerte restaureringsfelt kombinert med kokosvev.',
+    trl: 8,
+    applicationAreas: ['Utvendig drenering og fuktbeskyttelse for grunnmur', 'Overvannshåndtering og fordrøyningslag i grønne tak', 'Radon- og gassbrems under betonggulv på grunn', 'Jordstabilisering i erosjonsutsatte byggegroper'],
+    suppliers: ['Sphagnum Bygg AS', 'Grønn Drenering Norge', 'NIBIO Torvforsk'],
+    provenTesting: {
+      isVerified: true,
+      tier: 'SINTEF Verified',
+      accreditationNumber: 'NO-SINTEF-2026-SPH40',
+      verifiedDate: '2026-07-08',
+      laboratory: 'SINTEF Infrastruktur & Geoteknikk',
+      leadInspector: 'Dr. Tuva Berg',
+      reproducibilityScore: 98.7,
+      confidenceInterval: '95% KI (± 0.016)',
+      passedStandards: [
+        'NS-EN 13252 (Geotekstiler for drenering: Dreneringskapasitet 1.8 l/(s·m) ved 20 kPa trykk)',
+        'NS-EN ISO 25619-2 (Kompresjonsegenskaper: Beholder 82% porøsitet under 50 kPa jordtrykk)',
+        'NS-EN 13501-1 (Brannklasse E under terreng)'
+      ],
+      badgeLevel: 'Platinum'
+    },
+    epd: {
+      gwp: -64.0,
+      recycledContent: 100,
+      lifetime: 80,
+      circularity: '100% bionedbrytbar; omdannes gradvis til organisk humus uten forurensning av grunnvann'
+    },
+    testResults: {
+      fire: 'Plasseres under terreng mot fuktig jord; tilfredsstiller brannkrav til nedgravd drenering (Klasse E).',
+      moisture: 'Uovertruffen vannfordrøyning; leder bort 120 liter overvann per m² per time uten å tette seg med leirpartikler.',
+      strength: 'Tåler jordtrykk på opptil 75 kPa (tilsvarer 3.5 meter tilbakefylling) uten kollaps av dreneringskanalene.',
+      durability: 'Det naturlige innholdet av sphagnan-syre virker konserverende og hindrer biologisk forråtnelse under bakken.',
+      fireRating: 'Klasse E (Under bakken)',
+      strengthMpa: 0.075,
+      durabilityYears: 80,
+      provenFireMark: true,
+      provenMoistureMark: true,
+      provenStrengthMark: true,
+      provenDurabilityMark: true
+    },
+    healthRisk: '100% naturlig mose. Null utlekking av mikroplast eller giftige ftalater til grunnvann og drikkevannskilder.',
+    articles: [
+      {
+        id: 'art-40-1',
+        title: 'Sphagnum biomass geocomposites for sustainable basement drainage and stormwater retention in urban clays',
+        authors: 'Berg, T., Dahl, J. & Vanebo, S.',
+        year: 2026,
+        journal: 'Geotextiles and Geomembranes',
+        summary: 'Påviste at sphagnum-dreneringsmatter opprettholder over 80% vanngjennomstrømning selv etter 1000 timers leireslam-belastning.',
+        url: '#'
+      }
+    ],
+    openQuestions: [
+      {
+        id: 'q-40-1',
+        question: 'Kan tørket torvmose komprimeres til tynne ruller uten å miste den fibrillære sphagnan-strukturen?',
+        importance: 'Medium',
+        status: 'Under utforsking'
+      }
+    ],
+    experiments: [
+      {
+        id: 'exp-40-1',
+        title: 'Vanngjennomstrømningsprøving i radialpermeameter under konstant jordbelastning',
+        hypothesis: 'Dreneringskapasitet forblir over 1.5 l/(s·m) ved 40 kPa kompresjon.',
+        independentVariable: 'Mekanisk overtrykk (10, 25, 50 kPa)',
+        dependentVariable: 'Vannføringskapasitet Q i planet (l/(s·m))',
+        status: 'Fullført',
+        startDate: '2026-05-18',
+        endDate: '2026-06-30',
+        results: 'Vannføring ved 50 kPa målt til 1.78 l/(s·m). Hypotese bekreftet.',
+        logs: [
+          '18.05.2026: Monterte prøve i geoteknisk permeameter hos SINTEF.',
+          '30.06.2026: Avsluttet 6-ukers kontinuerlig strømningstest.'
+        ]
+      }
+    ],
+    measurements: [
+      { id: 'm-40-1', timestamp: '2026-06-30', parameter: 'gwp', value: -64.0, label: 'Livsløps GWP (kg CO2 eq/m²)', experimentTitle: 'Sphagnum LCA' },
+      { id: 'm-40-2', timestamp: '2026-07-02', parameter: 'strength', value: 0.075, label: 'Tillatt jordtrykk (MPa)', experimentTitle: 'Geoteknisk kompresjonsprøving' }
+    ]
   }
 ];
 
@@ -2036,6 +3371,172 @@ export const initialResearchers: Researcher[] = [
     activeHours: 115,
     successRate: 90,
     bio: 'Fokuserer på utnyttelse av ilandskyldt sukkertare og restråstoff fra skjellnæringen for utvikling av fukt- og saltherdede kystmaterialer.'
+  },
+  {
+    id: 'res-10',
+    name: 'Dr. Solveig Skoglund',
+    title: 'Spesialist på Translucent Tre & Nanokompositter',
+    department: 'RISE Bygg & Treteknikk / KTH',
+    expertise: ['Optisk delignifisering', 'Bio-basert PMMA-infiltrering', 'Termisk U-verdi modellering', 'Dagslys-arkitektur'],
+    avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80',
+    activeHours: 165,
+    successRate: 97,
+    bio: 'Ledende nordisk forsker på transparente trematerialer for fremtidens energieffektive glassfasader og lysstyring i passivbygg.'
+  },
+  {
+    id: 'res-11',
+    name: 'Prof. Eirik Møller',
+    title: 'Forskningsleder for Akustisk Biofysikk',
+    department: 'SINTEF Akustikk & Chalmers',
+    expertise: ['Porøs absorpsjonsmekanikk', 'Knuskkjuke-veving', 'Etterklangrom-validering', 'Fibrillær kitin-elastisitet'],
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    activeHours: 180,
+    successRate: 95,
+    bio: 'Ekspert på naturlige og bio-baserte akustiske absorbenter. Utvikler sirkulære lydabsorbenter med NRC over 0.95 for skoler og kulturbygg.'
+  },
+  {
+    id: 'res-12',
+    name: 'Dr. Tuva Berg',
+    title: 'Seniorforsker på Jordforsterkning & Biopolymerer',
+    department: 'NIBIO Divisjon for Bioteknologi',
+    expertise: ['Geotekniske biopolymerer', 'Xanthan-gum jordsikring', 'Røtter og mycorrhiza-forsterkning', 'Jorderosjonsvern'],
+    avatar: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?w=150&auto=format&fit=crop&q=80',
+    activeHours: 130,
+    successRate: 93,
+    bio: 'Forsker på biologisk stabilisering av skråninger, byggegroper og erosjonsutsatt leirgrunn ved hjelp av mikrobielle polysakkarider.'
+  },
+  {
+    id: 'res-13',
+    name: 'Dr. Mikkel Lindholm',
+    title: 'Leder for Fotosyntetisk Arkitektur & Fotobiologi',
+    department: 'Københavns Universitet & SINTEF Ocean',
+    expertise: ['Bioluminescens i bygg', 'Mikroalgedyrking i fasader', 'Fotoreaktive silikater', 'Nattlig luminansoptimalisering'],
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    activeHours: 145,
+    successRate: 94,
+    bio: 'Pioner innen integrering av levende mikroalgekulturer og fosforescens i urbane overflater for naturlig belysning uten strømforbruk.'
+  },
+  {
+    id: 'res-14',
+    name: 'Dr. Kari Sundsfjord',
+    title: 'Kulturminneforsker & Bio-Mørtelspesialist',
+    department: 'NIKU Bygghåndverkslaboratorium',
+    expertise: ['Hydraulisk bio-kalk (NHL)', 'Kasein-kalsium chelater', 'Diffusjonsmekanikk', 'Historisk murverksvern'],
+    avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=150&auto=format&fit=crop&q=80',
+    activeHours: 160,
+    successRate: 96,
+    bio: 'Kombinerer tradisjonelt nordisk murhåndverk med moderne materialkjemi for utvikling av diffusjonsåpne og saltbestandige bio-kalkpussinger.'
+  },
+  {
+    id: 'res-15',
+    name: 'Siv.ing. Jarle H.',
+    title: 'Sjefarkitekt for Digitale Labs & Brukerspaces',
+    department: 'Nordic BioBuild Hub & Systemarkitektur',
+    expertise: ['Multi-lab koordinering', 'TRL-akselerasjon', 'Digital tvilling & Unreal integrasjon', 'Brukerspace-allokering'],
+    avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+    activeHours: 210,
+    successRate: 99,
+    bio: 'Prosjektleder og systemarkitekt for BioBuild-plattformen. Ansvarlig for tverrfaglige arbeidsområder, datastandardisering og forskerspaces.'
   }
 ];
+
+export const initialUserSpaces: UserSpace[] = [
+  {
+    id: 'space-main',
+    name: 'Nordic BioBuild Hovedlaboratorium',
+    code: 'NBB-CORE',
+    description: 'Sentral fellesforskningshub for registrering, akkreditering og testing av alle biologiske bygningsmaterialer i Norden.',
+    leadResearcherId: 'res-15',
+    department: 'Nordic BioBuild Hub & Konsortium',
+    focusAreas: ['TRL Validering', 'Akkreditert Prøving', 'EPD-Standardisering', 'Klassifisering'],
+    pinnedMaterialIds: ['mat-1', 'mat-2', 'mat-4', 'mat-26', 'mat-28', 'mat-31', 'mat-33', 'mat-34', 'mat-35', 'mat-39'],
+    activeExperimentsCount: 14,
+    memberCount: 15,
+    badge: 'Sentral Hub',
+    color: 'emerald',
+    notes: 'Fokus på Q3 2026: Samle inn akkrediterte brann- og fuktmålinger for samtlige TRL 6-8 materialer i forkant av EU-harmonisering.',
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'space-sintef',
+    name: 'SINTEF Prøvingslab & Brannsikkerhet',
+    code: 'SIN-FIRE',
+    description: 'Spesialisert testlaboratorium for ISO 1182 og NS-EN 13501-1 branntester, mekanisk bøyeprøving og termisk U-verdianalyse.',
+    leadResearcherId: 'res-2',
+    department: 'SINTEF Byggforsk & Konstruksjon',
+    focusAreas: ['Brannklasse A1/B-s1', 'Termisk U-verdi', 'Mekanisk Trykkfasthet', 'ISO 8301'],
+    pinnedMaterialIds: ['mat-2', 'mat-10', 'mat-26', 'mat-28', 'mat-32', 'mat-33', 'mat-34', 'mat-37', 'mat-40'],
+    activeExperimentsCount: 8,
+    memberCount: 6,
+    badge: 'Akkreditert Testkammer',
+    color: 'amber',
+    notes: 'Branntesting i vertikal ovn kalibrert 15. august 2026. Prioriterer transparente trepaneler og halmbaserte EcoCore-plater.',
+    createdAt: '2026-02-01'
+  },
+  {
+    id: 'space-myco',
+    name: 'NTNU Biopolymer & Mykologi Sandbox',
+    code: 'NTNU-MYCO',
+    description: 'Forskningsrom dedikert til dyrking av soppmycel, kitinbaserte kompositter, celleveggsmodifikasjoner og akustikk.',
+    leadResearcherId: 'res-1',
+    department: 'NTNU Biopolymerlab Gløshaugen',
+    focusAreas: ['Ganoderma lucidum', 'Fomes fomentarius', 'Hygroskopisk Buffer', 'Akustisk Absorpsjon'],
+    pinnedMaterialIds: ['mat-1', 'mat-8', 'mat-21', 'mat-28'],
+    activeExperimentsCount: 9,
+    memberCount: 5,
+    badge: 'Bio-Dyrking & Akustikk',
+    color: 'purple',
+    notes: 'Optimalisering av vekstsyklus for knuskkjuke ved 24°C og 85% RF. NIBIO-samarbeid på skogsavfalls-substrater pågår.',
+    createdAt: '2026-02-15'
+  },
+  {
+    id: 'space-circular',
+    name: 'Sirkulær Ressurs & Karbonregnskap (LCA Lab)',
+    code: 'LCA-CIRC',
+    description: 'Analytisk arbeidsrom for miljødeklarasjoner (EPD), vugge-til-grav analyser, karbonnegativitet og jordbruksrestråstoff.',
+    leadResearcherId: 'res-3',
+    department: 'Sirkulærøkonomi & Miljøanalyse',
+    focusAreas: ['EPD-regnskap (GWP)', 'Vugge-til-grav LCA', 'Landbruksbiprodukter', 'Komposterbarhet'],
+    pinnedMaterialIds: ['mat-4', 'mat-11', 'mat-22', 'mat-30', 'mat-32', 'mat-33', 'mat-36', 'mat-38', 'mat-39'],
+    activeExperimentsCount: 7,
+    memberCount: 4,
+    badge: 'Karbonregnskap & LCA',
+    color: 'blue',
+    notes: 'Validerer negative GWP-tall for halmplater og kaseinkalkmørtel for publisering i EPD Norge-registeret.',
+    createdAt: '2026-03-01'
+  },
+  {
+    id: 'space-marine',
+    name: 'Akvatiske Biomaterialer & Kystinfrastruktur',
+    code: 'SEA-INFRA',
+    description: 'Arbeidsområde for utnyttelse av kyst- og havråstoffer: tare-alginat, skalldyr-kitosan, biologisk korrosjonsvern og kystbetong.',
+    leadResearcherId: 'res-9',
+    department: 'SINTEF Ocean & Tromsø Kystlab',
+    focusAreas: ['Kitosan Geopolymer', 'Sukkertare-bindemidler', 'Arktisk Saltvannsklima', 'Bioluminescens'],
+    pinnedMaterialIds: ['mat-6', 'mat-24', 'mat-27', 'mat-29', 'mat-34', 'mat-36', 'mat-37', 'mat-40'],
+    activeExperimentsCount: 6,
+    memberCount: 5,
+    badge: 'Kyst & Havressurser',
+    color: 'teal',
+    notes: 'Tidevannseksponering ved Tromsø havn viser eksepsjonell bestandighet mot kloridvandring for kitosanbetong.',
+    createdAt: '2026-03-20'
+  },
+  {
+    id: 'space-personal',
+    name: 'Mitt Forskerspace (Jarle / Personlig Lab)',
+    code: 'USR-JARLE',
+    description: 'Ditt personlige eksperimentelle arbeidsområde. Pinned materialer, egne notater, rask hypotese-testing og tilpassede parametere.',
+    leadResearcherId: 'res-15',
+    department: 'Personlig Pilot & Utforskningsrom',
+    focusAreas: ['Egendefinerte Tester', 'Hypotesegenerering', 'Hurtig Prototype', 'Favorittmaterialer'],
+    pinnedMaterialIds: ['mat-1', 'mat-26', 'mat-27', 'mat-28', 'mat-29', 'mat-31', 'mat-32', 'mat-33', 'mat-34', 'mat-35', 'mat-37'],
+    activeExperimentsCount: 5,
+    memberCount: 2,
+    badge: 'Personlig Arbeidsrom',
+    color: 'rose',
+    notes: 'Prioritert arbeidsplan: Kjøre Unreal Engine simulering på translucent tre og kombinere det med bioluminescerende algebelegg.',
+    createdAt: '2026-04-01'
+  }
+];
+
 
