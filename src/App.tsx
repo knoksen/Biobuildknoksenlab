@@ -50,7 +50,10 @@ import {
   CheckCircle2,
   Building2,
   Pin,
-  PinOff
+  PinOff,
+  Monitor,
+  Scale,
+  ArrowLeftRight
 } from 'lucide-react';
 import { initialBioMaterials, initialResearchers, initialUserSpaces } from './data';
 import { ImageTag } from './types';
@@ -58,6 +61,8 @@ import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, Researcher, Mea
 import UnrealBridge from './components/UnrealBridge';
 import EierallokeringView from './components/EierallokeringView';
 import UserSpacesView from './components/UserSpacesView';
+import WindowsDesktopModal from './components/WindowsDesktopModal';
+import MaterialComparisonModal from './components/MaterialComparisonModal';
 import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport } from './utils/pdfGenerator';
 
 import {
@@ -525,7 +530,7 @@ export default function App() {
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>(materials[0]?.id || '');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Alle');
-  const [activeTab, setActiveTab] = useState<'oversikt' | 'tester' | 'artikler' | 'sporsmal' | 'eksperimenter' | 'analyse'>('oversikt');
+  const [activeTab, setActiveTab] = useState<'oversikt' | 'tester' | 'artikler' | 'sporsmal' | 'eksperimenter' | 'analyse' | 'sammenlign'>('oversikt');
 
   // New material creation states
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -646,6 +651,14 @@ export default function App() {
   // Proven Testing Certification Modal & Filter
   const [showProvenModal, setShowProvenModal] = useState(false);
   const [onlyProvenFilter, setOnlyProvenFilter] = useState(false);
+
+  // Windows Desktop & EXE Installer Modal
+  const [showWindowsDesktopModal, setShowWindowsDesktopModal] = useState(false);
+
+  // Material Comparison Modal State
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareMaterialAId, setCompareMaterialAId] = useState<string>('');
+  const [compareMaterialBId, setCompareMaterialBId] = useState<string>('');
 
   const sanitizeImageSrc = (value: string | null): string | null => {
     if (!value) return null;
@@ -2128,12 +2141,35 @@ export default function App() {
           </button>
 
           <button 
+            id="btn-open-material-compare"
+            onClick={() => {
+              setCompareMaterialAId(selectedMaterialId);
+              setShowCompareModal(true);
+            }}
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-emerald-800 text-white hover:bg-emerald-700 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
+            title="Sammenlign to bio-materialer side om side (GWP, styrke, brannkrav)"
+          >
+            <Scale className="w-4 h-4 text-emerald-300" />
+            <span>Sammenlign</span>
+          </button>
+
+          <button 
             id="btn-open-add-modal"
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-[#5A5A40] text-white py-2 px-4 rounded-full hover:bg-[#4a4a34] transition-all shadow-sm"
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-[#5A5A40] text-white py-2 px-4 rounded-full hover:bg-[#4a4a34] transition-all shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Nytt Materiale</span>
+          </button>
+
+          <button 
+            id="btn-open-windows-desktop"
+            onClick={() => setShowWindowsDesktopModal(true)}
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-indigo-950 text-indigo-100 hover:bg-indigo-900 border border-indigo-700/70 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
+            title="Åpne Windows Desktop App (.EXE) og Installasjonsprogram"
+          >
+            <Monitor className="w-4 h-4 text-indigo-300" />
+            <span>Windows .EXE App</span>
           </button>
         </div>
       </header>
@@ -2490,6 +2526,19 @@ export default function App() {
                         <span>Eksporter Eksperiment- & Testdata (PDF)</span>
                       </button>
 
+                      <button
+                        id="btn-compare-with-another"
+                        onClick={() => {
+                          setCompareMaterialAId(activeMaterial.id);
+                          setShowCompareModal(true);
+                        }}
+                        className="flex items-center gap-1.5 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer"
+                        title="Sammenlign dette materialet direkte med et annet materiale (GWP, styrke, brannkrav)"
+                      >
+                        <Scale className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>Sammenlign Side-by-side</span>
+                      </button>
+
                       {/* Pin to active user space button */}
                       {activeSpaceId !== 'all' && (() => {
                         const currentSpace = userSpaces.find(s => s.id === activeSpaceId);
@@ -2708,10 +2757,37 @@ export default function App() {
                   <LineChart className="w-3.5 h-3.5" />
                   Resultatanalyse
                 </button>
+                <button
+                  id="tab-btn-sammenlign"
+                  onClick={() => setActiveTab('sammenlign')}
+                  className={`text-xs uppercase tracking-wider font-bold py-2.5 px-4 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                    activeTab === 'sammenlign'
+                      ? 'bg-white text-emerald-800 shadow-xs border-b-2 border-emerald-700 font-extrabold'
+                      : 'text-[#2c2c24]/70 hover:bg-[#eeede6] hover:text-[#2c2c24]'
+                  }`}
+                >
+                  <Scale className="w-3.5 h-3.5 text-emerald-700" />
+                  Sammenlign (Side-by-side)
+                </button>
               </div>
 
               {/* ================= ACTIVE TAB PANEL CONTAINER ================= */}
               <div className="flex-1 overflow-y-auto pr-1 space-y-6">
+
+                {/* ----------------- TAB: SAMMENLIGNING (SIDE-BY-SIDE) ----------------- */}
+                {activeTab === 'sammenlign' && (
+                  <div className="space-y-4 animate-in fade-in duration-200">
+                    <MaterialComparisonModal
+                      embedded={true}
+                      materials={materials}
+                      initialMaterialAId={activeMaterial.id}
+                      onSelectMaterial={(id) => {
+                        setSelectedMaterialId(id);
+                        setActiveTab('oversikt');
+                      }}
+                    />
+                  </div>
+                )}
 
                 {/* ----------------- TAB: OVERSIKT & SAMMENSETNING ----------------- */}
                 {activeTab === 'oversikt' && (
@@ -5234,6 +5310,7 @@ export default function App() {
             evaIsThinking={evaIsThinking}
             unrealLogs={unrealLogs}
             handleSendEvaMessage={handleSendEvaMessage}
+            onOpenDesktopModal={() => setShowWindowsDesktopModal(true)}
           />
         </div>
       )}
@@ -5818,6 +5895,29 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Windows Desktop App & EXE Installer Modal */}
+      <WindowsDesktopModal
+        isOpen={showWindowsDesktopModal}
+        onClose={() => setShowWindowsDesktopModal(false)}
+        onRunWinInst={() => {
+          setGlobalView('unreal');
+          setShowWindowsDesktopModal(false);
+        }}
+      />
+
+      {/* Material Comparison Modal (Side-by-side GWP, Strength & Fire Ratings) */}
+      <MaterialComparisonModal
+        isOpen={showCompareModal}
+        onClose={() => setShowCompareModal(false)}
+        materials={materials}
+        initialMaterialAId={compareMaterialAId || activeMaterial?.id}
+        initialMaterialBId={compareMaterialBId}
+        onSelectMaterial={(id) => {
+          setSelectedMaterialId(id);
+          setShowCompareModal(false);
+        }}
+      />
 
     </div>
   );

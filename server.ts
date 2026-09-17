@@ -47,6 +47,43 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Windows Desktop & Installer Info endpoint
+app.get('/api/desktop/info', (req, res) => {
+  res.json({
+    status: 'ok',
+    appName: 'BioBuild Evidence Lab',
+    version: '1.0.0',
+    platform: 'win32',
+    arch: ['x64', 'arm64'],
+    ports: {
+      appPort: PORT,
+      pixelStreamingPort: 8888
+    },
+    installers: [
+      {
+        id: 'inno',
+        name: 'Inno Setup 6 (.ISS -> .EXE)',
+        scriptPath: 'installer/BioBuild-Installer.iss',
+        outputExe: 'dist-installer/BioBuild_Evidence_Lab_Setup_v1.0.0.exe',
+        command: 'ISCC.exe installer\\BioBuild-Installer.iss'
+      },
+      {
+        id: 'nsis',
+        name: 'Nullsoft Scriptable Install System (.NSI -> .EXE)',
+        scriptPath: 'installer/BioBuild-Setup.nsi',
+        outputExe: 'dist-installer/BioBuild_Setup.exe',
+        command: 'makensis installer\\BioBuild-Setup.nsi'
+      },
+      {
+        id: 'batch',
+        name: '1-Klikk Windows Setup (.BAT / .CMD)',
+        scriptPath: 'run-win-installer.bat',
+        command: '.\\run-win-installer.bat'
+      }
+    ]
+  });
+});
+
 // 1. Generate Material Profile
 app.post('/api/gemini/generate-material', async (req, res) => {
   try {

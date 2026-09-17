@@ -1,0 +1,28 @@
+{
+  "appName": "BioBuild Evidence Lab",
+  "version": "1.0.0",
+  "platform": "win32",
+  "arch": "x64",
+  "buildDate": "2026-09-17T15:24:38.282Z",
+  "installerFormats": [
+    {
+      "type": "Inno Setup 6 (.EXE)",
+      "script": "installer/BioBuild-Installer.iss",
+      "output": "dist-installer/BioBuild_Evidence_Lab_Setup_v1.0.0.exe"
+    },
+    {
+      "type": "NSIS Setup (.EXE)",
+      "script": "installer/BioBuild-Setup.nsi",
+      "output": "dist-installer/BioBuild_Setup.exe"
+    },
+    {
+      "type": "Native 1-Click Windows Setup",
+      "script": "installer/install-biobuild.cmd",
+      "launcher": "start-app.cmd"
+    },
+    {
+      "type": "Unreal Engine 5.4 Pixel Streaming Bridge (Win Inst)",
+      "script": "run-win-inst.bat"
+    }
+  ]
+}

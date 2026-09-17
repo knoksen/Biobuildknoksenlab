@@ -10,7 +10,11 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "win:inst": "node scripts/win-installer.js",
-    "win-inst": "node scripts/win-installer.js"
+    "win-inst": "node scripts/win-installer.js",
+    "win:installer": "node scripts/win-installer.js",
+    "desktop:build": "node scripts/build-win-desktop.js",
+    "desktop:pack": "node scripts/generate-exe-package.js",
+    "dist:win": "node scripts/generate-exe-package.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -45,6 +45,7 @@ interface UnrealBridgeProps {
   evaIsThinking: boolean;
   unrealLogs: string[];
   handleSendEvaMessage: (e?: React.FormEvent) => void;
+  onOpenDesktopModal?: () => void;
 }
 
 export default function UnrealBridge({
@@ -55,7 +56,8 @@ export default function UnrealBridge({
   setEvaInputText,
   evaIsThinking,
   unrealLogs,
-  handleSendEvaMessage
+  handleSendEvaMessage,
+  onOpenDesktopModal
 }: UnrealBridgeProps) {
   
   const handleSliderChange = (key: string, val: number) => {
@@ -196,7 +198,7 @@ export default function UnrealBridge({
               </span>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={handleRunWinInst}
@@ -216,6 +218,18 @@ export default function UnrealBridge({
                 <Terminal className="w-3.5 h-3.5 text-amber-300" />
                 <span>Win Inst Oppsett</span>
               </button>
+
+              {onOpenDesktopModal && (
+                <button
+                  type="button"
+                  onClick={onOpenDesktopModal}
+                  className="col-span-2 sm:col-span-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 border border-indigo-500/40 text-[11px] font-bold py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  title="Åpne Windows Desktop App & EXE Installasjonsveiviser"
+                >
+                  <Monitor className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Desktop .EXE</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -569,6 +583,27 @@ export default function UnrealBridge({
                     Last ned skript
                   </button>
                 </div>
+
+                {/* Windows Desktop & EXE Installer Link */}
+                {onOpenDesktopModal && (
+                  <div className="bg-indigo-950/40 border border-indigo-800/60 rounded-xl p-3 flex items-center justify-between font-mono text-xs">
+                    <div>
+                      <span className="text-[10px] text-indigo-300 block font-bold">Windows Desktop App (.EXE Setup):</span>
+                      <span className="text-white font-bold">Inno Setup & NSIS Installasjonsveiviser</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowWinInstModal(false);
+                        onOpenDesktopModal();
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Monitor className="w-3.5 h-3.5 text-indigo-200" />
+                      Åpne EXE Veiviser
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Setup Guide */}
