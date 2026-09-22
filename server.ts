@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
@@ -435,6 +436,125 @@ Returner svaret på NORSK i strikt JSON-format med følgende felter:
   }
 });
 
+// 1c. Hent foreslåtte avvik med Gemini basert på bildeinnhold
+app.post('/api/gemini/suggest-defects', async (req, res) => {
+  try {
+    const { capturedImage, materialName, category, model } = req.body;
+    if (!capturedImage) {
+      return res.status(400).json({ error: 'Testbilde er påkrevd for å hente foreslåtte avvik.' });
+    }
+
+    const selectedModel = model || 'gemini-3.8-flash';
+    const ai = getAiClient();
+
+    // Parse capturedImage base64
+    let capturedMime = 'image/jpeg';
+    let capturedBase64 = capturedImage;
+    if (capturedImage.startsWith('data:')) {
+      const matches = capturedImage.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+      if (matches) {
+        capturedMime = matches[1];
+        capturedBase64 = matches[2];
+      }
+    }
+
+    const parts: any[] = [
+      {
+        inlineData: {
+          mimeType: capturedMime,
+          data: capturedBase64,
+        },
+      },
+      {
+        text: `Du er en spesialist på materialtesting, mikroskopi og feildiagnostikk for bio-baserte bygningsmaterialer ved BioBuild Evidence Lab.
+Analyser testbildet av materialet "${materialName || 'Bio-materiale'}" (${category || 'Bio-materiale'}).
+
+Identifiser konkrete visuelle avvik og defekter i materialprøven basert på bildeinnholdet.
+Klassifiser hvert avvik nøyaktig i én av følgende kategorier:
+- 'Sprekk' (f.eks. mikrosprekker, strekkbrudd, riss, overflatebrudd)
+- 'Fukt' (f.eks. fuktinntrengning, mørke fuktflekker, kondens eller saltutslag)
+- 'Delaminering' (f.eks. lagdeling, avskalling, løsnede fiberlag)
+- 'Misfarging' (f.eks. misfarging, oksidasjon, mugg eller biologisk pigmentering)
+- 'Generelt' (f.eks. ujevnheter, porer, dimensjonsavvik eller mekanisk skade)
+
+For hvert oppdagede avvik:
+1. "category": MÅ være en av: 'Sprekk', 'Fukt', 'Delaminering', 'Misfarging', 'Generelt'.
+2. "label": En konsis, beskrivende merkelapp på norsk (maks 80 tegn), f.eks. "Mikrosprekk langs fiberbunt" eller "Fukt-innsig ved underkant".
+3. "x": Heltall fra 5 til 95 (horisontal posisjon i prosent fra venstre på bildet).
+4. "y": Heltall fra 5 til 95 (vertikal posisjon i prosent fra toppen på bildet).
+5. "description": En kort faglig forklaring (1-2 setninger).
+6. "severity": 'Kritisk' | 'Moderat' | 'Lav'.
+
+Finn mellom 1 og 5 av de mest signifikante avvikene eller kritiske overvåkingspunktene på prøven.
+Returner svaret på NORSK i strikt JSON-format.`
+      }
+    ];
+
+    const response = await ai.models.generateContent({
+      model: selectedModel,
+      contents: { parts },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          required: ['defects', 'summary'],
+          properties: {
+            defects: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                required: ['category', 'label', 'x', 'y'],
+                properties: {
+                  category: {
+                    type: Type.STRING,
+                    description: "Avvikskategori: 'Sprekk', 'Fukt', 'Delaminering', 'Misfarging', eller 'Generelt'",
+                  },
+                  label: {
+                    type: Type.STRING,
+                    description: "Kort, presis merkelapp for avviket",
+                  },
+                  x: {
+                    type: Type.INTEGER,
+                    description: "Horisontal koordinat i prosent (5-95)",
+                  },
+                  y: {
+                    type: Type.INTEGER,
+                    description: "Vertikal koordinat i prosent (5-95)",
+                  },
+                  description: {
+                    type: Type.STRING,
+                    description: "Kort faglig forklaring av observasjonen",
+                  },
+                  severity: {
+                    type: Type.STRING,
+                    description: "Alvorlighetsgrad: 'Kritisk', 'Moderat', eller 'Lav'",
+                  },
+                },
+              },
+            },
+            summary: {
+              type: Type.STRING,
+              description: "Kort sammendrag av oppdagede avvik",
+            },
+          },
+        },
+      },
+    });
+
+    const resultText = response.text;
+    if (!resultText) {
+      throw new Error('Gemini returnerte et tomt svar.');
+    }
+
+    const defectData = JSON.parse(resultText.trim());
+    defectData.usedModel = selectedModel;
+    res.json(defectData);
+  } catch (error: any) {
+    console.error('Error suggesting defects with Gemini:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke hente foreslåtte avvik med Gemini.' });
+  }
+});
+
 // 2. Generate Experiment Hypothesis based on Open Question
 app.post('/api/gemini/generate-experiment', async (req, res) => {
   try {
@@ -654,13 +774,31 @@ Returner et JSON-objekt med:
 // Vite or Production Static Serve
 // -------------------------------------------------------------
 async function bootstrap() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-    console.log('Vite middleware mounted in development mode');
+  const isCompiledBundle = typeof __filename !== 'undefined' && __filename.endsWith('server.cjs');
+  const hasDist = fs.existsSync(path.join(process.cwd(), 'dist', 'index.html'));
+  const isProduction = process.env.NODE_ENV === 'production' || isCompiledBundle || (hasDist && process.env.NODE_ENV !== 'development');
+
+  if (!isProduction) {
+    try {
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+      console.log('Vite middleware mounted in development mode');
+    } catch (viteErr) {
+      console.warn('Vite dev middleware could not start, checking for dist fallback:', viteErr);
+      const distPath = path.join(process.cwd(), 'dist');
+      if (fs.existsSync(path.join(distPath, 'index.html'))) {
+        app.use(express.static(distPath));
+        app.get('*', (req, res) => {
+          res.sendFile(path.join(distPath, 'index.html'));
+        });
+        console.log(`Fallback: Serving static production files from: ${distPath}`);
+      } else {
+        throw viteErr;
+      }
+    }
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));

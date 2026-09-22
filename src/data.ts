@@ -96,8 +96,42 @@ export const initialBioMaterials: BioMaterial[] = [
           '01.06.2026: Klargjorde 15 mycelblokker av type Ganoderma.',
           '10.06.2026: Påførte bivoks (smeltet, 60C) på 5 blokker, linolje på 5 blokker. Siste 5 er kontrollgruppe.',
           '25.06.2026: Startet fuktkammer-eksponering.'
+        ],
+        notes: [
+          {
+            id: 'note-1-1',
+            timestamp: '11.06.2026 kl. 09:30',
+            author: 'Dr. L. Vinterberg (Lab)',
+            category: 'Observasjon',
+            content: 'Optisk mikroskopering (50x) viser jevn overflateforsegling på blokkene behandlet med bivoks. Ingen sprekker i overgangen mellom hyfenettverket og vokslaget.',
+            tags: ['mikroskopi', 'overflate', 'hyfestruktur']
+          },
+          {
+            id: 'note-1-2',
+            timestamp: '26.06.2026 kl. 14:15',
+            author: 'K. Solheim (Labingeniør)',
+            category: 'Miljø & Klima',
+            content: 'Klimakammeret holder stabil 95% RF ved 21.4°C. Kontrollgruppen viser tidlige tegn til overflatesvelling etter 24 timer i kammeret.',
+            tags: ['klimakammer', 'fuktighet', 'kontrollgruppe']
+          },
+          {
+            id: 'note-1-3',
+            timestamp: '28.06.2026 kl. 11:00',
+            author: 'Dr. L. Vinterberg (Lab)',
+            category: 'Måling & Prøving',
+            content: 'Vannoppsugingstesten etter 48 timer viser kun 4.2% vektøkning for bivoks-prøvene, mot 31.8% for ubehandlet kontroll. Resultatene er signifikant over hypotesens forventninger.',
+            tags: ['kapillærsug', 'vektmåling', 'bivoks']
+          }
         ]
       }
+    ],
+    measurements: [
+      { id: 'm-1-1', timestamp: '2026-06-02', parameter: 'strength', value: 0.012, label: 'Dag 1', experimentTitle: 'Naturlig voksbelegg på mycelblokker' },
+      { id: 'm-1-2', timestamp: '2026-06-04', parameter: 'strength', value: 0.043, label: 'Dag 3', experimentTitle: 'Naturlig voksbelegg på mycelblokker' },
+      { id: 'm-1-3', timestamp: '2026-06-08', parameter: 'strength', value: 0.106, label: 'Dag 7', experimentTitle: 'Naturlig voksbelegg på mycelblokker' },
+      { id: 'm-1-4', timestamp: '2026-06-15', parameter: 'strength', value: 0.162, label: 'Dag 14', experimentTitle: 'Naturlig voksbelegg på mycelblokker' },
+      { id: 'm-1-5', timestamp: '2026-06-22', parameter: 'strength', value: 0.194, label: 'Dag 21', experimentTitle: 'Naturlig voksbelegg på mycelblokker' },
+      { id: 'm-1-6', timestamp: '2026-06-29', parameter: 'strength', value: 0.208, label: 'Dag 28', experimentTitle: 'Naturlig voksbelegg på mycelblokker' }
     ]
   },
   {
@@ -183,6 +217,14 @@ export const initialBioMaterials: BioMaterial[] = [
         ],
         results: 'Resultatene bekreftet hypotesen! 5% puzzolan reduserte tørketiden til 14 dager (ned fra 28) og økte trykkfastheten etter 7 dager fra 0.12 MPa til 0.22 MPa. Optimalt for norsk høstbygging.'
       }
+    ],
+    measurements: [
+      { id: 'm-2-1', timestamp: '2026-03-11', parameter: 'strength', value: 0.054, label: 'Dag 1', experimentTitle: 'Akselerert herding av hampkalk' },
+      { id: 'm-2-2', timestamp: '2026-03-13', parameter: 'strength', value: 0.192, label: 'Dag 3', experimentTitle: 'Akselerert herding av hampkalk' },
+      { id: 'm-2-3', timestamp: '2026-03-17', parameter: 'strength', value: 0.425, label: 'Dag 7', experimentTitle: 'Akselerert herding av hampkalk' },
+      { id: 'm-2-4', timestamp: '2026-03-24', parameter: 'strength', value: 0.680, label: 'Dag 14', experimentTitle: 'Akselerert herding av hampkalk' },
+      { id: 'm-2-5', timestamp: '2026-03-31', parameter: 'strength', value: 0.760, label: 'Dag 21', experimentTitle: 'Akselerert herding av hampkalk' },
+      { id: 'm-2-6', timestamp: '2026-04-07', parameter: 'strength', value: 0.825, label: 'Dag 28', experimentTitle: 'Akselerert herding av hampkalk' }
     ]
   },
   {
@@ -265,6 +307,14 @@ export const initialBioMaterials: BioMaterial[] = [
           'Vil benytte klimakammeret på SINTEF i Trondheim.'
         ]
       }
+    ],
+    measurements: [
+      { id: 'm-3-1', timestamp: '2026-05-02', parameter: 'strength', value: 13.1, label: 'Dag 1', experimentTitle: 'NS-EN 12390-3 Trykkprøving' },
+      { id: 'm-3-2', timestamp: '2026-05-04', parameter: 'strength', value: 25.4, label: 'Dag 3', experimentTitle: 'NS-EN 12390-3 Trykkprøving' },
+      { id: 'm-3-3', timestamp: '2026-05-08', parameter: 'strength', value: 33.8, label: 'Dag 7', experimentTitle: 'NS-EN 12390-3 Trykkprøving' },
+      { id: 'm-3-4', timestamp: '2026-05-15', parameter: 'strength', value: 39.2, label: 'Dag 14', experimentTitle: 'NS-EN 12390-3 Trykkprøving' },
+      { id: 'm-3-5', timestamp: '2026-05-22', parameter: 'strength', value: 41.5, label: 'Dag 21', experimentTitle: 'NS-EN 12390-3 Trykkprøving' },
+      { id: 'm-3-6', timestamp: '2026-05-29', parameter: 'strength', value: 43.6, label: 'Dag 28', experimentTitle: 'NS-EN 12390-3 Trykkprøving' }
     ]
   },
   {

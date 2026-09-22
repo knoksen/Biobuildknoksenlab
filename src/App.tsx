@@ -53,17 +53,28 @@ import {
   PinOff,
   Monitor,
   Scale,
-  ArrowLeftRight
+  ArrowLeftRight,
+  FileDown,
+  FileSpreadsheet,
+  CloudSun,
+  ArrowRight
 } from 'lucide-react';
 import { initialBioMaterials, initialResearchers, initialUserSpaces } from './data';
 import { ImageTag } from './types';
-import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, Researcher, MeasurementPoint, UserSpace } from './types';
+import { BioMaterial, ResearchArticle, OpenQuestion, Experiment, ExperimentNote, Researcher, MeasurementPoint, UserSpace } from './types';
 import UnrealBridge from './components/UnrealBridge';
 import EierallokeringView from './components/EierallokeringView';
 import UserSpacesView from './components/UserSpacesView';
 import WindowsDesktopModal from './components/WindowsDesktopModal';
 import MaterialComparisonModal from './components/MaterialComparisonModal';
-import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport } from './utils/pdfGenerator';
+import MaterialTableModal from './components/MaterialTableModal';
+import TrendChart from './components/TrendChart';
+import HistoricalTrendAnalysis from './components/HistoricalTrendAnalysis';
+import WeatherMoistureCorrelation from './components/WeatherMoistureCorrelation';
+import ExperimentNotesSection from './components/ExperimentNotesSection';
+import { motion, AnimatePresence } from 'motion/react';
+import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport, generateBulkMaterialsPDFReport } from './utils/pdfGenerator';
+import { downloadMaterialsCsv } from './utils/csvExporter';
 
 import {
   ResponsiveContainer,
@@ -115,7 +126,9 @@ const TaggedImageOverlay: React.FC<{
           className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group/pin"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 border-white transition-transform transform group-hover/pin:scale-125 ${
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 ${
+            tag.isAiSuggested ? 'border-amber-300 ring-2 ring-purple-500/50' : 'border-white'
+          } transition-transform transform group-hover/pin:scale-125 ${
             tag.category === 'Sprekk' ? 'bg-red-600' :
             tag.category === 'Fukt' ? 'bg-blue-600' :
             tag.category === 'Delaminering' ? 'bg-orange-600' :
@@ -125,10 +138,15 @@ const TaggedImageOverlay: React.FC<{
           </div>
 
           {/* Tooltip on pin hover */}
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-48 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-52 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
             <div className="flex items-center justify-between font-bold border-b border-slate-700 pb-1 text-[10px] uppercase text-slate-300">
               <span className="flex items-center gap-1">
                 <Tag className="w-3 h-3 text-amber-400" /> #{idx + 1} {tag.category}
+                {tag.isAiSuggested && (
+                  <span className="text-[8px] bg-purple-600 text-purple-100 px-1 py-0.2 rounded font-bold ml-1">
+                    ✨ AI
+                  </span>
+                )}
               </span>
               <button
                 type="button"
@@ -142,7 +160,18 @@ const TaggedImageOverlay: React.FC<{
               </button>
             </div>
             <p className="text-[11px] text-slate-100 font-medium mt-1">{tag.label}</p>
-            <div className="text-[9px] text-slate-400 mt-0.5">Pos: ({tag.x}%, {tag.y}%)</div>
+            <div className="text-[9px] text-slate-400 mt-0.5 flex justify-between items-center">
+              <span>Pos: ({tag.x}%, {tag.y}%)</span>
+              {tag.severity && (
+                <span className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded ${
+                  tag.severity === 'Kritisk' ? 'bg-red-900/80 text-red-200' :
+                  tag.severity === 'Moderat' ? 'bg-amber-900/80 text-amber-200' :
+                  'bg-blue-900/80 text-blue-200'
+                }`}>
+                  {tag.severity}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       ))}
@@ -326,6 +355,37 @@ const getTimelineEventsForMaterial = (material: BioMaterial): TimelineEventItem[
               iconType: 'file'
             });
           }
+        });
+      }
+
+      if (exp.notes && exp.notes.length > 0) {
+        exp.notes.forEach((note) => {
+          let datePart = exp.startDate;
+          const dateMatch = note.timestamp.match(/^(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})/);
+          if (dateMatch) {
+            datePart = dateMatch[1];
+          }
+
+          events.push({
+            id: `note-${note.id}`,
+            date: note.timestamp,
+            timestampMs: parseDateToMs(datePart),
+            type: 'logger',
+            title: `Laboratorieobservasjon [${note.category}]`,
+            subtitle: `${note.author ? `${note.author} • ` : ''}Forsøk: "${exp.title}"`,
+            description: note.content,
+            experimentTitle: exp.title,
+            badgeText: note.category,
+            badgeBg: note.category === 'Observasjon' ? 'bg-blue-100' :
+                     note.category === 'Måling & Prøving' ? 'bg-emerald-100' :
+                     note.category === 'Miljø & Klima' ? 'bg-cyan-100' :
+                     note.category === 'Avvik / Anomali' ? 'bg-amber-100' : 'bg-purple-100',
+            badgeTextColor: note.category === 'Observasjon' ? 'text-blue-950' :
+                            note.category === 'Måling & Prøving' ? 'text-emerald-950' :
+                            note.category === 'Miljø & Klima' ? 'text-cyan-950' :
+                            note.category === 'Avvik / Anomali' ? 'text-amber-950' : 'text-purple-950',
+            iconType: 'file'
+          });
         });
       }
     });
@@ -582,7 +642,9 @@ export default function App() {
   const [newMeasLabel, setNewMeasLabel] = useState('');
   const [newMeasValue, setNewMeasValue] = useState<number | ''>('');
   const [newMeasExpId, setNewMeasExpId] = useState('');
-  const [selectedAnalyseMetric, setSelectedAnalyseMetric] = useState<'styrke' | 'fuktighet' | 'gwp'>('styrke');
+  const [selectedAnalyseMetric, setSelectedAnalyseMetric] = useState<'styrke' | 'fuktighet' | 'gwp' | 'trend' | 'weather'>('styrke');
+  const [recentlyAddedMeasId, setRecentlyAddedMeasId] = useState<string | null>(null);
+  const [recentMeasNotification, setRecentMeasNotification] = useState<{ title: string; subtitle: string; param: string } | null>(null);
 
   // Resultatanalyse Timeline State
   const [timelineFilter, setTimelineFilter] = useState<'alle' | 'malinger' | 'foto' | 'milepeler' | 'logger'>('alle');
@@ -597,6 +659,12 @@ export default function App() {
     experimentTitle?: string;
   } | null>(null);
 
+  // PDF Generation State & Notifications
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfToastNotification, setPdfToastNotification] = useState<{ message: string; type: 'info' | 'success' | 'error' } | null>(null);
+  
+  // Bulk Multi-Material Selection State for Combined Export
+  const [selectedMaterialIdsForBulk, setSelectedMaterialIdsForBulk] = useState<string[]>([]);
 
   // AI Chat State
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
@@ -647,6 +715,12 @@ export default function App() {
   const [isTaggingActive, setIsTaggingActive] = useState(true);
   const [activeHoverTagId, setActiveHoverTagId] = useState<string | null>(null);
   const [burnTagsToSavedImage, setBurnTagsToSavedImage] = useState(true);
+  const [isFetchingSuggestedDefects, setIsFetchingSuggestedDefects] = useState(false);
+  const [suggestedDefectsFeedback, setSuggestedDefectsFeedback] = useState<{
+    count: number;
+    summary: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   // Proven Testing Certification Modal & Filter
   const [showProvenModal, setShowProvenModal] = useState(false);
@@ -659,6 +733,10 @@ export default function App() {
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [compareMaterialAId, setCompareMaterialAId] = useState<string>('');
   const [compareMaterialBId, setCompareMaterialBId] = useState<string>('');
+
+  // Material Table & CSV Export Modal State
+  const [showMaterialTableModal, setShowMaterialTableModal] = useState(false);
+  const [csvToastNotification, setCsvToastNotification] = useState<string | null>(null);
 
   const sanitizeImageSrc = (value: string | null): string | null => {
     if (!value) return null;
@@ -808,6 +886,85 @@ export default function App() {
       setAnalysisError(err.message || 'Feil ved tilkobling til Gemini API for visuell analyse.');
     } finally {
       setIsAnalyzingImage(false);
+    }
+  };
+
+  const handleFetchSuggestedDefects = async () => {
+    if (!capturedImage) {
+      setSuggestedDefectsFeedback({
+        count: 0,
+        summary: 'Vennligst start kamera eller last opp et testbilde først.',
+        type: 'error'
+      });
+      return;
+    }
+
+    setIsFetchingSuggestedDefects(true);
+    setSuggestedDefectsFeedback(null);
+
+    try {
+      const response = await fetch('/api/gemini/suggest-defects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          capturedImage,
+          materialName: activeMaterial ? activeMaterial.name : 'Bio-materiale',
+          category: activeMaterial ? activeMaterial.category : 'Byggemateriale',
+          model: selectedGeminiModel || 'gemini-3.8-flash',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Kunne ikke hente foreslåtte avvik fra Gemini.');
+      }
+
+      const data = await response.json();
+      const defects: any[] = Array.isArray(data.defects) ? data.defects : [];
+
+      if (defects.length === 0) {
+        setSuggestedDefectsFeedback({
+          count: 0,
+          summary: data.summary || 'Ingen kritiske avvik ble oppdaget av Gemini i dette bildet.',
+          type: 'success',
+        });
+        return;
+      }
+
+      const newTags: ImageTag[] = defects.map((d, idx) => {
+        let cat: ImageTag['category'] = 'Generelt';
+        const rawCat = (d.category || '').toLowerCase();
+        if (rawCat.includes('sprekk')) cat = 'Sprekk';
+        else if (rawCat.includes('fukt')) cat = 'Fukt';
+        else if (rawCat.includes('delaminer')) cat = 'Delaminering';
+        else if (rawCat.includes('misfarg') || rawCat.includes('oksid')) cat = 'Misfarging';
+
+        return {
+          id: `tag-ai-${Date.now()}-${idx}`,
+          x: Math.min(95, Math.max(5, Math.round(Number(d.x) || 50))),
+          y: Math.min(95, Math.max(5, Math.round(Number(d.y) || 50))),
+          label: d.label || `${cat} oppdaget av Gemini`,
+          category: cat,
+          isAiSuggested: true,
+          severity: d.severity,
+        };
+      });
+
+      setImageTags(prev => [...prev, ...newTags]);
+      setSuggestedDefectsFeedback({
+        count: newTags.length,
+        summary: data.summary || `Gemini identifiserte ${newTags.length} avvik (${newTags.map(t => t.category).join(', ')}).`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      console.error('Feil ved henting av foreslåtte avvik:', err);
+      setSuggestedDefectsFeedback({
+        count: 0,
+        summary: err.message || 'Feil ved tilkobling til Gemini for avviksidentifisering.',
+        type: 'error',
+      });
+    } finally {
+      setIsFetchingSuggestedDefects(false);
     }
   };
 
@@ -1019,11 +1176,38 @@ export default function App() {
       if (m.id === activeMaterial.id) {
         return {
           ...m,
-          measurements: [...(m.measurements || []), newPoint]
+          measurements: [...(m.measurements || []), newPoint],
+          epd: newMeasParam === 'gwp' ? { ...m.epd, gwp: Number(newMeasValue) } : m.epd,
+          testResults: newMeasParam === 'strength' && (!m.testResults?.strengthMpa || m.testResults.strengthMpa === 0)
+            ? { ...m.testResults, strengthMpa: Number(newMeasValue) }
+            : m.testResults
         };
       }
       return m;
     }));
+
+    // Trigger visual spring feedback
+    setRecentlyAddedMeasId(newPoint.id);
+    const unit = newMeasParam === 'strength' ? 'MPa' : newMeasParam === 'moisture' ? '%' : 'kg CO₂ eq/kg';
+    const paramName = newMeasParam === 'strength' ? 'Styrkemåling' : newMeasParam === 'moisture' ? 'Fuktmåling' : 'GWP-karbon';
+    setRecentMeasNotification({
+      title: `${paramName} lagret & plottet!`,
+      subtitle: `${newPoint.label}: ${newPoint.value} ${unit} integrert i kurven med spring-animasjon`,
+      param: newMeasParam
+    });
+
+    // Automatically align active graph metric with added parameter if relevant
+    if (newMeasParam === 'strength' && selectedAnalyseMetric !== 'styrke' && selectedAnalyseMetric !== 'trend') {
+      setSelectedAnalyseMetric('styrke');
+    } else if (newMeasParam === 'moisture' && selectedAnalyseMetric !== 'fuktighet' && selectedAnalyseMetric !== 'weather') {
+      setSelectedAnalyseMetric('fuktighet');
+    } else if (newMeasParam === 'gwp' && selectedAnalyseMetric !== 'gwp') {
+      setSelectedAnalyseMetric('gwp');
+    }
+
+    setTimeout(() => {
+      setRecentMeasNotification(null);
+    }, 4500);
 
     setNewMeasLabel('');
     setNewMeasValue('');
@@ -1037,6 +1221,41 @@ export default function App() {
         return {
           ...m,
           measurements: (m.measurements || []).filter(item => item.id !== measId)
+        };
+      }
+      return m;
+    }));
+  };
+
+  const handleAddSingleMeasurement = (newPoint: MeasurementPoint) => {
+    if (!activeMaterial) return;
+    setMaterials(prev => prev.map(m => {
+      if (m.id === activeMaterial.id) {
+        return {
+          ...m,
+          measurements: [...(m.measurements || []), newPoint]
+        };
+      }
+      return m;
+    }));
+    setRecentlyAddedMeasId(newPoint.id);
+    setRecentMeasNotification({
+      title: 'Målepunkt lagret!',
+      subtitle: `${newPoint.label}: ${newPoint.value} er animert inn i dataserien`,
+      param: newPoint.parameter
+    });
+    setTimeout(() => {
+      setRecentMeasNotification(null);
+    }, 4500);
+  };
+
+  const handleBatchAddMeasurements = (newPoints: MeasurementPoint[]) => {
+    if (!activeMaterial) return;
+    setMaterials(prev => prev.map(m => {
+      if (m.id === activeMaterial.id) {
+        return {
+          ...m,
+          measurements: [...(m.measurements || []), ...newPoints]
         };
       }
       return m;
@@ -1240,6 +1459,18 @@ export default function App() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
+  };
+
+  // Export to CSV helper (Excel-formatted with UTF-8 BOM, semicolon delimiter, and comma decimals)
+  const handleExportCsvDirect = (targetList?: BioMaterial[]) => {
+    const listToExport = targetList && targetList.length > 0 ? targetList : materials;
+    downloadMaterialsCsv(listToExport, researchers, userSpaces, undefined, {
+      delimiter: ';',
+      decimalSeparator: ',',
+      includeBom: true,
+    });
+    setCsvToastNotification(`Eksporterte ${listToExport.length} bio-materialer til CSV (tilpasset Excel)`);
+    setTimeout(() => setCsvToastNotification(null), 3500);
   };
 
   // 1. GENERATE NEW BIO-MATERIAL (AI GEMINI PROXIED)
@@ -1450,6 +1681,7 @@ export default function App() {
     if (window.confirm(`Er du sikker på at du vil slette materialprofilen "${name}" fra laben?`)) {
       const remaining = materials.filter(m => m.id !== id);
       setMaterials(remaining);
+      setSelectedMaterialIdsForBulk(prev => prev.filter(mId => mId !== id));
       setSelectedMaterialId(remaining[0].id);
     }
   };
@@ -1685,6 +1917,55 @@ export default function App() {
                 ...exp,
                 status,
                 logs: [...exp.logs, `${new Date().toLocaleDateString('no-NO')}: Status endret til ${status}.`]
+              };
+            }
+            return exp;
+          })
+        };
+      }
+      return m;
+    }));
+  };
+
+  // ADD EXPERIMENT OBSERVATION NOTE
+  const handleAddExperimentNote = (expId: string, noteData: Omit<ExperimentNote, 'id'>) => {
+    if (!activeMaterial) return;
+    const newNote: ExperimentNote = {
+      id: `note-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      ...noteData
+    };
+
+    setMaterials(prev => prev.map(m => {
+      if (m.id === activeMaterial.id) {
+        return {
+          ...m,
+          experiments: m.experiments.map(exp => {
+            if (exp.id === expId) {
+              return {
+                ...exp,
+                notes: [newNote, ...(exp.notes || [])]
+              };
+            }
+            return exp;
+          })
+        };
+      }
+      return m;
+    }));
+  };
+
+  // DELETE EXPERIMENT OBSERVATION NOTE
+  const handleDeleteExperimentNote = (expId: string, noteId: string) => {
+    if (!activeMaterial) return;
+    setMaterials(prev => prev.map(m => {
+      if (m.id === activeMaterial.id) {
+        return {
+          ...m,
+          experiments: m.experiments.map(exp => {
+            if (exp.id === expId) {
+              return {
+                ...exp,
+                notes: (exp.notes || []).filter(n => n.id !== noteId)
               };
             }
             return exp;
@@ -1964,6 +2245,86 @@ export default function App() {
     setPredictedAllocation(null);
   };
 
+  // GENERER FULLSTENDIG PDF-RAPPORT AV MATERIALPROFIL INKLUDERT ALLE TESTRESULTATER
+  const handleDownloadFullMaterialPdf = (materialToExport: BioMaterial) => {
+    setIsGeneratingPdf(true);
+    setPdfToastNotification({
+      message: `Genererer offisiell PDF-rapport for «${materialToExport.name}» inkludert alle testresultater...`,
+      type: 'info'
+    });
+
+    setTimeout(() => {
+      try {
+        const owner = researchers.find(r => r.id === materialToExport.ownerId);
+        generateMaterialPDFReport(materialToExport, owner);
+        setPdfToastNotification({
+          message: `PDF-rapport for «${materialToExport.name}» inkludert alle testresultater er generert og lastet ned!`,
+          type: 'success'
+        });
+      } catch (err) {
+        console.error('Feil ved generering av PDF:', err);
+        setPdfToastNotification({
+          message: `Kunne ikke fullføre PDF-generering. Vennligst forsøk igjen.`,
+          type: 'error'
+        });
+      } finally {
+        setIsGeneratingPdf(false);
+        setTimeout(() => {
+          setPdfToastNotification(null);
+        }, 4500);
+      }
+    }, 180);
+  };
+
+  // 12B. BULK-EKSPORT AV SAMLET PDF FOR FLERE VALGTE MATERIALER
+  const handleToggleMaterialSelect = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedMaterialIdsForBulk(prev =>
+      prev.includes(id) ? prev.filter(mId => mId !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkExportPDF = () => {
+    if (selectedMaterialIdsForBulk.length === 0) {
+      setPdfToastNotification({
+        message: 'Ingen materialer er valgt. Merk av materialer i listen til venstre før du trykker Bulk-eksport.',
+        type: 'error'
+      });
+      setTimeout(() => setPdfToastNotification(null), 4500);
+      return;
+    }
+
+    const selectedMaterials = materials.filter(m => selectedMaterialIdsForBulk.includes(m.id));
+    if (selectedMaterials.length === 0) return;
+
+    setIsGeneratingPdf(true);
+    setPdfToastNotification({
+      message: `Genererer samlet PDF-rapport for ${selectedMaterials.length} valgte bio-materialer...`,
+      type: 'info'
+    });
+
+    setTimeout(() => {
+      try {
+        generateBulkMaterialsPDFReport(selectedMaterials, researchers);
+        setPdfToastNotification({
+          message: `Samlet PDF-rapport for ${selectedMaterials.length} materialer er generert og lastet ned!`,
+          type: 'success'
+        });
+      } catch (err) {
+        console.error('Feil ved generering av samlet PDF:', err);
+        setPdfToastNotification({
+          message: 'Kunne ikke fullføre samlet PDF-generering. Vennligst forsøk igjen.',
+          type: 'error'
+        });
+      } finally {
+        setIsGeneratingPdf(false);
+        setTimeout(() => {
+          setPdfToastNotification(null);
+        }, 5000);
+      }
+    }, 220);
+  };
+
   // 13. CHAT WITH METAHUMAN EVA-01
   const handleSendEvaMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -2080,6 +2441,15 @@ export default function App() {
           </button>
           <span>•</span>
           <button 
+            id="btn-export-csv"
+            onClick={() => handleExportCsvDirect()}
+            className="hover:text-emerald-900 text-emerald-800 flex items-center gap-1 transition-colors font-medium"
+            title="Eksporter materialtabellen direkte til CSV for Excel (norsk/europeisk format)"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" /> Eksporter tabell (CSV)
+          </button>
+          <span>•</span>
+          <button 
             id="btn-reset"
             onClick={handleResetData}
             className="hover:text-red-700 flex items-center gap-1 transition-colors font-medium text-xs"
@@ -2138,6 +2508,44 @@ export default function App() {
           >
             <Sparkles className="w-4 h-4" />
             <span>AI Lab-partner {showChatDrawer ? 'Aktiv' : 'Spør'}</span>
+          </button>
+
+          <button 
+            id="btn-header-bulk-export"
+            onClick={handleBulkExportPDF}
+            disabled={isGeneratingPdf}
+            className={`flex items-center gap-2 text-xs uppercase tracking-wider font-semibold py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer border ${
+              selectedMaterialIdsForBulk.length > 0
+                ? 'bg-[#5A5A40] text-white hover:bg-[#484833] border-[#484833] ring-2 ring-amber-300/40'
+                : 'bg-[#eeede6] text-[#2c2c24] hover:bg-[#e2e1d5] border-[#dcdad0]'
+            } disabled:opacity-50`}
+            title={
+              selectedMaterialIdsForBulk.length > 0
+                ? `Generer samlet PDF-rapport for ${selectedMaterialIdsForBulk.length} valgte materialer`
+                : 'Velg ett eller flere materialer i listen til venstre for å generere samlet PDF-rapport'
+            }
+          >
+            {isGeneratingPdf ? (
+              <Loader2 className="w-4 h-4 text-amber-300 animate-spin" />
+            ) : (
+              <FileDown className="w-4 h-4 text-amber-400" />
+            )}
+            <span>Bulk-eksport</span>
+            {selectedMaterialIdsForBulk.length > 0 && (
+              <span className="bg-amber-300 text-stone-950 font-bold px-2 py-0.5 rounded-full text-[10px] font-mono shadow-2xs">
+                {selectedMaterialIdsForBulk.length}
+              </span>
+            )}
+          </button>
+
+          <button 
+            id="btn-open-material-table"
+            onClick={() => setShowMaterialTableModal(true)}
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-emerald-900 text-white hover:bg-emerald-800 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
+            title="Åpne komplett forsknings- og materialtabell med filtrering, sortering og CSV-eksport"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+            <span>Materialtabell (CSV)</span>
           </button>
 
           <button 
@@ -2349,13 +2757,107 @@ export default function App() {
               ) : null;
             })()}
 
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#2c2c24]/60">
-                Registrerte Organismer & Materialer ({filteredMaterials.length})
-              </h3>
-              <span className="text-[10px] bg-[#eeede6] py-0.5 px-2 rounded font-mono font-bold text-xs">
-                TRL 1-9
-              </span>
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#2c2c24]/60">
+                  Registrerte Materialer ({filteredMaterials.length})
+                </h3>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    id="btn-sidebar-open-table"
+                    onClick={() => setShowMaterialTableModal(true)}
+                    className="text-[10px] bg-emerald-50 text-emerald-900 hover:bg-emerald-100 border border-emerald-300 py-0.5 px-2 rounded-lg font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="Åpne materialtabell og eksporter til CSV for Excel"
+                  >
+                    <FileSpreadsheet className="w-3 h-3 text-emerald-700" />
+                    <span>Tabell/CSV</span>
+                  </button>
+                  <span className="text-[10px] bg-[#eeede6] py-0.5 px-2 rounded font-mono font-bold text-xs">
+                    TRL 1-9
+                  </span>
+                </div>
+              </div>
+
+              {/* Multi-selection Toolbar for Bulk Operations */}
+              <div className="flex items-center justify-between bg-[#f4f3ec] border border-[#e2e1d5] rounded-xl px-2.5 py-1.5 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    id="btn-toggle-select-all-filtered"
+                    onClick={() => {
+                      const allCurrentFilteredSelected = filteredMaterials.length > 0 && filteredMaterials.every(m => selectedMaterialIdsForBulk.includes(m.id));
+                      if (allCurrentFilteredSelected) {
+                        setSelectedMaterialIdsForBulk(prev => prev.filter(id => !filteredMaterials.some(m => m.id === id)));
+                      } else {
+                        const idsToAdd = filteredMaterials.map(m => m.id);
+                        setSelectedMaterialIdsForBulk(prev => Array.from(new Set([...prev, ...idsToAdd])));
+                      }
+                    }}
+                    className="flex items-center gap-1.5 font-bold text-[#464632] hover:text-black cursor-pointer transition-colors"
+                    title="Velg eller avmerk alle synlige materialer"
+                  >
+                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
+                      filteredMaterials.length > 0 && filteredMaterials.every(m => selectedMaterialIdsForBulk.includes(m.id))
+                        ? 'bg-[#5A5A40] border-[#5A5A40] text-white'
+                        : selectedMaterialIdsForBulk.some(id => filteredMaterials.some(m => m.id === id))
+                        ? 'bg-[#8a8a70] border-[#5A5A40] text-white'
+                        : 'bg-white border-gray-300'
+                    }`}>
+                      {filteredMaterials.length > 0 && filteredMaterials.every(m => selectedMaterialIdsForBulk.includes(m.id)) ? (
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      ) : selectedMaterialIdsForBulk.some(id => filteredMaterials.some(m => m.id === id)) ? (
+                        <span className="w-1.5 h-1.5 bg-white rounded-xs"></span>
+                      ) : null}
+                    </span>
+                    <span className="text-[10.5px]">
+                      {filteredMaterials.length > 0 && filteredMaterials.every(m => selectedMaterialIdsForBulk.includes(m.id))
+                        ? 'Avmerk alle'
+                        : 'Velg alle'}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  {selectedMaterialIdsForBulk.length > 0 ? (
+                    <>
+                      <span className="bg-[#5A5A40] text-white px-2 py-0.5 rounded-full font-mono text-[9.5px] font-bold shadow-2xs">
+                        {selectedMaterialIdsForBulk.length} valgt
+                      </span>
+                      <button
+                        type="button"
+                        id="btn-bulk-export-csv"
+                        onClick={() => handleExportCsvDirect(materials.filter(m => selectedMaterialIdsForBulk.includes(m.id)))}
+                        className="text-[10px] bg-emerald-800 hover:bg-emerald-700 text-white px-2 py-0.5 rounded font-bold cursor-pointer flex items-center gap-1 transition-colors shadow-2xs"
+                        title="Eksporter kun valgte materialer til CSV"
+                      >
+                        <FileSpreadsheet className="w-3 h-3" />
+                        <span>CSV</span>
+                      </button>
+                      <button
+                        type="button"
+                        id="btn-clear-bulk-selection"
+                        onClick={() => setSelectedMaterialIdsForBulk([])}
+                        className="text-[10px] text-gray-500 hover:text-red-700 underline font-medium cursor-pointer"
+                        title="Nullstill alle valgte materialer"
+                      >
+                        Nullstill
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      id="btn-sidebar-export-filtered-csv"
+                      onClick={() => handleExportCsvDirect(filteredMaterials)}
+                      className="text-[10px] text-emerald-800 hover:text-emerald-950 font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                      title="Eksporter alle synlige/filtrerte materialer til CSV"
+                    >
+                      <FileSpreadsheet className="w-3 h-3 text-emerald-700" />
+                      <span>CSV ({filteredMaterials.length})</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             {filteredMaterials.length === 0 ? (
@@ -2371,17 +2873,21 @@ export default function App() {
               </div>
             ) : (
               <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 max-h-[400px] lg:max-h-[500px]">
-                {filteredMaterials.map((mat) => {
+                {filteredMaterials.map((mat, index) => {
                   const isActive = mat.id === activeMaterial?.id;
+                  const isSelectedForBulk = selectedMaterialIdsForBulk.includes(mat.id);
                   return (
-                    <div
+                    <motion.div
                       key={mat.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, delay: Math.min(index * 0.02, 0.2) }}
                       onClick={() => handleSelectMaterial(mat.id)}
                       className={`p-3.5 rounded-xl border transition-all cursor-pointer relative group ${
                         isActive 
                           ? 'bg-[#eeede6] border-[#5A5A40]/50 shadow-sm' 
                           : 'bg-[#fcfcf9] hover:bg-[#eeede6]/45 border-[#e2e1d5]'
-                      }`}
+                      } ${isSelectedForBulk ? 'ring-2 ring-[#5A5A40]/40 border-[#5A5A40]/60' : ''}`}
                     >
                       {/* Delete button */}
                       <button
@@ -2396,10 +2902,26 @@ export default function App() {
                       </button>
 
                       <div className="flex justify-between items-start pr-4">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide border ${getCategoryColor(mat.category)}`}>
-                          {mat.category}
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold uppercase ${getTrlBg(mat.trl)}`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {/* Bulk Multi-select Checkbox */}
+                          <button
+                            type="button"
+                            id={`chk-material-${mat.id}`}
+                            onClick={(e) => handleToggleMaterialSelect(mat.id, e)}
+                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                              isSelectedForBulk
+                                ? 'bg-[#5A5A40] border-[#5A5A40] text-white shadow-2xs'
+                                : 'bg-white border-gray-300 hover:border-[#5A5A40] text-transparent'
+                            }`}
+                            title={isSelectedForBulk ? 'Fjern fra bulk-utvalg' : 'Velg for samlet bulk-rapport'}
+                          >
+                            <Check className="w-3 h-3 text-white stroke-[3]" />
+                          </button>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide border truncate ${getCategoryColor(mat.category)}`}>
+                            {mat.category}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold uppercase shrink-0 ${getTrlBg(mat.trl)}`}>
                           TRL {mat.trl}
                         </span>
                       </div>
@@ -2441,7 +2963,7 @@ export default function App() {
                           {mat.openQuestions.length} spm • {mat.experiments.length} forsøk
                         </span>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -2502,15 +3024,17 @@ export default function App() {
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         id="btn-download-pdf-report"
-                        onClick={() => {
-                          const owner = researchers.find(r => r.id === activeMaterial.ownerId);
-                          generateMaterialPDFReport(activeMaterial, owner);
-                        }}
-                        className="flex items-center gap-1.5 bg-[#5A5A40] hover:bg-[#4a4a34] text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer"
-                        title="Generer og last ned generell materialrapport"
+                        onClick={() => handleDownloadFullMaterialPdf(activeMaterial)}
+                        disabled={isGeneratingPdf}
+                        className="flex items-center gap-1.5 bg-[#5A5A40] hover:bg-[#4a4a34] text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        title="Generer komplett PDF-rapport av materialprofilen inkludert alle testresultater"
                       >
-                        <FileText className="w-3.5 h-3.5 text-amber-200" />
-                        <span>Materialrapport</span>
+                        {isGeneratingPdf ? (
+                          <Loader2 className="w-3.5 h-3.5 text-amber-200 animate-spin" />
+                        ) : (
+                          <FileText className="w-3.5 h-3.5 text-amber-200" />
+                        )}
+                        <span>Generer PDF-rapport (med testresultater)</span>
                       </button>
 
                       <button
@@ -2520,10 +3044,10 @@ export default function App() {
                           generateExperimentAndTestDataPDFReport(activeMaterial, owner);
                         }}
                         className="flex items-center gap-1.5 bg-[#2c5282] hover:bg-[#1a365d] text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer"
-                        title="Eksporter alle eksperimenter, logger og testdata til PDF"
+                        title="Eksporter alle eksperimenter, logger og rå testdata til PDF"
                       >
                         <Beaker className="w-3.5 h-3.5 text-blue-200" />
-                        <span>Eksporter Eksperiment- & Testdata (PDF)</span>
+                        <span>Eksporter Test- & Rådata (PDF)</span>
                       </button>
 
                       <button
@@ -2932,17 +3456,33 @@ export default function App() {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => {
-                          const owner = researchers.find(r => r.id === activeMaterial.ownerId);
-                          generateExperimentAndTestDataPDFReport(activeMaterial, owner);
-                        }}
-                        className="bg-[#2c5282] hover:bg-[#1a365d] text-white text-xs font-bold py-2 px-4 rounded-xl transition-all flex items-center gap-2 shadow-xs shrink-0 cursor-pointer"
-                        title="Eksporter testdata og eksperiment-logger til PDF"
-                      >
-                        <FileText className="w-4 h-4 text-blue-200" />
-                        <span>Eksporter Testdata (PDF)</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          id="btn-tester-full-pdf"
+                          onClick={() => handleDownloadFullMaterialPdf(activeMaterial)}
+                          disabled={isGeneratingPdf}
+                          className="bg-[#5A5A40] hover:bg-[#4a4a34] text-white text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-2 shadow-xs shrink-0 cursor-pointer disabled:opacity-50"
+                          title="Generer komplett PDF-rapport av materialprofilen inkludert alle testresultater og analyser"
+                        >
+                          {isGeneratingPdf ? (
+                            <Loader2 className="w-4 h-4 text-amber-200 animate-spin" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-amber-200" />
+                          )}
+                          <span>Generer Komplett PDF-rapport</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const owner = researchers.find(r => r.id === activeMaterial.ownerId);
+                            generateExperimentAndTestDataPDFReport(activeMaterial, owner);
+                          }}
+                          className="bg-[#2c5282] hover:bg-[#1a365d] text-white text-xs font-bold py-2 px-3 rounded-xl transition-all flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+                          title="Eksporter kun eksperiment-logger og rå måledata til PDF"
+                        >
+                          <Beaker className="w-3.5 h-3.5 text-blue-200" />
+                          <span>Kun Testdata & Logger</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Kamera Foto-dokumentasjon & Før-og-Etter Sammenligning */}
@@ -3345,8 +3885,29 @@ export default function App() {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-2">
-                                    <label className="flex items-center gap-1.5 text-xs text-slate-700 font-medium bg-white px-2.5 py-1 rounded-lg border border-slate-200 cursor-pointer">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <button
+                                      type="button"
+                                      id="btn-fetch-suggested-defects"
+                                      onClick={handleFetchSuggestedDefects}
+                                      disabled={!capturedImage || isFetchingSuggestedDefects}
+                                      className="bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs py-1.5 px-3 rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md"
+                                      title="Bruk Gemini AI til å identifisere mulige defekter (f.eks. sprekk eller fukt) basert på bildeinnholdet"
+                                    >
+                                      {isFetchingSuggestedDefects ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-200" />
+                                          <span>Henter avvik...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                                          <span>Hent foreslåtte avvik</span>
+                                        </>
+                                      )}
+                                    </button>
+
+                                    <label className="flex items-center gap-1.5 text-xs text-slate-700 font-medium bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer">
                                       <input
                                         type="checkbox"
                                         checked={burnTagsToSavedImage}
@@ -3368,10 +3929,57 @@ export default function App() {
                                   </div>
                                 </div>
 
+                                {suggestedDefectsFeedback && (
+                                  <div
+                                    className={`p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 transition-all ${
+                                      suggestedDefectsFeedback.type === 'success'
+                                        ? 'bg-purple-50 text-purple-900 border border-purple-200'
+                                        : 'bg-red-50 text-red-900 border border-red-200'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {suggestedDefectsFeedback.type === 'success' ? (
+                                        <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+                                      ) : (
+                                        <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                                      )}
+                                      <span>{suggestedDefectsFeedback.summary}</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSuggestedDefectsFeedback(null)}
+                                      className="text-slate-400 hover:text-slate-700 text-xs font-bold cursor-pointer px-1"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                )}
+
                                 {imageTags.length === 0 ? (
-                                  <div className="text-center py-3 bg-white rounded-xl border border-dashed border-purple-200 text-xs text-slate-500 flex items-center justify-center gap-2">
-                                    <Crosshair className="w-4 h-4 text-purple-500 animate-pulse" />
-                                    <span>Ingen merkelapper plassert enda. <strong>Klikk hvor som helst på testbildet for å plassere et avvikspunkt!</strong></span>
+                                  <div className="text-center py-4 bg-white rounded-xl border border-dashed border-purple-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <Crosshair className="w-4 h-4 text-purple-500 animate-pulse" />
+                                      <span>Ingen merkelapper plassert enda. <strong>Klikk hvor som helst på testbildet</strong>, eller:</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      id="btn-fetch-suggested-defects-empty"
+                                      onClick={handleFetchSuggestedDefects}
+                                      disabled={!capturedImage || isFetchingSuggestedDefects}
+                                      className="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 font-bold text-xs px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      {isFetchingSuggestedDefects ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                                          <span>Analyserer bilde med Gemini...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                          <span>Hent foreslåtte avvik (Gemini)</span>
+                                        </>
+                                      )}
+                                    </button>
                                   </div>
                                 ) : (
                                   <div className="flex flex-wrap gap-2">
@@ -3388,10 +3996,25 @@ export default function App() {
                                         }`}>
                                           {idx + 1}
                                         </span>
-                                        <div className="text-xs">
+                                        <div className="text-xs flex items-center gap-1.5 flex-wrap">
                                           <span className="font-bold text-slate-800">{tag.category}: </span>
                                           <span className="text-slate-600">{tag.label}</span>
-                                          <span className="text-[9px] text-slate-400 ml-1.5 font-mono">({tag.x}%, {tag.y}%)</span>
+                                          <span className="text-[9px] text-slate-400 font-mono">({tag.x}%, {tag.y}%)</span>
+                                          {tag.isAiSuggested && (
+                                            <span className="text-[9px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded border border-purple-200 flex items-center gap-0.5" title="Avvik foreslått av Gemini basert på bildeinnhold">
+                                              <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                                              Gemini
+                                            </span>
+                                          )}
+                                          {tag.severity && (
+                                            <span className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded ${
+                                              tag.severity === 'Kritisk' ? 'bg-red-100 text-red-700' :
+                                              tag.severity === 'Moderat' ? 'bg-amber-100 text-amber-700' :
+                                              'bg-blue-100 text-blue-700'
+                                            }`}>
+                                              {tag.severity}
+                                            </span>
+                                          )}
                                         </div>
                                         <button
                                           type="button"
@@ -3821,6 +4444,12 @@ export default function App() {
 
                       </div>
                     </div>
+
+                    {/* Trend Chart: Styrkeutvikling & Sammenligning med Standard Referansekurve */}
+                    <TrendChart 
+                      material={activeMaterial} 
+                      measurements={activeMaterial.measurements} 
+                    />
 
                     {/* Akkrediterte Prøvingsnormer & Verifiseringsbevis Dossier */}
                     {activeMaterial.provenTesting?.isVerified && (
@@ -4281,9 +4910,17 @@ export default function App() {
                           Ingen laboratorieforsøk eller aktive hypoteser er lagt inn for dette materialet.
                         </div>
                       ) : (
-                        activeMaterial.experiments.map((exp) => (
-                          <div 
+                        activeMaterial.experiments.map((exp, expIdx) => (
+                          <motion.div 
                             key={exp.id} 
+                            initial={{ opacity: 0, y: 24 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, margin: "-30px" }}
+                            transition={{
+                              duration: 0.45,
+                              ease: [0.22, 1, 0.36, 1],
+                              delay: Math.min(expIdx * 0.08, 0.24)
+                            }}
                             className={`rounded-2xl p-6 border ${
                               exp.status === 'Fullført' 
                                 ? 'bg-stone-50 border-[#e2e1d5] text-[#2c2c24]' 
@@ -4451,6 +5088,16 @@ export default function App() {
                               </div>
                             )}
 
+                            {/* Laboratorieobservasjoner & Forskningsnotater Seksjon */}
+                            <ExperimentNotesSection
+                              experimentId={exp.id}
+                              experimentTitle={exp.title}
+                              notes={exp.notes}
+                              isCompleted={exp.status === 'Fullført'}
+                              onAddNote={handleAddExperimentNote}
+                              onDeleteNote={handleDeleteExperimentNote}
+                            />
+
                             {/* Complete experiment action widget */}
                             {exp.status === 'Aktiv' && (
                               <div className="mt-4 pt-3 border-t border-[#f0f0e8] flex flex-col sm:flex-row gap-2 justify-between items-end">
@@ -4475,7 +5122,7 @@ export default function App() {
                                 </button>
                               </div>
                             )}
-                          </div>
+                          </motion.div>
                         ))
                       )}
                     </div>
@@ -4497,6 +5144,29 @@ export default function App() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <button
+                            id="btn-analyse-export-csv"
+                            onClick={() => handleExportCsvDirect([activeMaterial])}
+                            className="flex items-center gap-1.5 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer"
+                            title="Eksporter dette materialets tekniske data og EPD-verdier til CSV"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-200" />
+                            <span>Eksporter CSV</span>
+                          </button>
+                          <button
+                            id="btn-analyse-download-pdf"
+                            onClick={() => handleDownloadFullMaterialPdf(activeMaterial)}
+                            disabled={isGeneratingPdf}
+                            className="flex items-center gap-1.5 bg-[#5A5A40] hover:bg-[#4a4a34] text-white text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                            title="Generer komplett PDF-rapport av materialet med testresultater og analyse"
+                          >
+                            {isGeneratingPdf ? (
+                              <Loader2 className="w-3.5 h-3.5 text-amber-200 animate-spin" />
+                            ) : (
+                              <FileText className="w-3.5 h-3.5 text-amber-200" />
+                            )}
+                            <span>Eksporter PDF</span>
+                          </button>
                           <span className="text-[10px] uppercase font-bold text-gray-400">Aktivt materiale:</span>
                           <span className="text-xs font-bold text-gray-800 bg-[#f9f9f7] border border-[#dcdad0] py-1 px-3 rounded-lg">
                             {activeMaterial?.name}
@@ -4540,168 +5210,289 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Chart & Interaction Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      
-                      {/* Left side: Visualizations */}
-                      <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs flex flex-col justify-between">
-                        <div>
-                          {/* Inner Tabs for chart switching */}
-                          <div className="flex border-b border-[#eeede6] pb-3 mb-5 gap-4 overflow-x-auto">
-                            <button
-                              onClick={() => setSelectedAnalyseMetric('styrke')}
-                              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
-                                selectedAnalyseMetric === 'styrke'
-                                  ? 'bg-[#5A5A40] text-white font-bold'
-                                  : 'text-gray-500 hover:bg-stone-100'
-                              }`}
-                            >
-                              Styrkeutvikling (MPa)
-                            </button>
-                            <button
-                              onClick={() => setSelectedAnalyseMetric('fuktighet')}
-                              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
-                                selectedAnalyseMetric === 'fuktighet'
-                                  ? 'bg-[#5A5A40] text-white font-bold'
-                                  : 'text-gray-500 hover:bg-stone-100'
-                              }`}
-                            >
-                              Fuktabsorpsjon (%)
-                            </button>
-                            <button
-                              onClick={() => setSelectedAnalyseMetric('gwp')}
-                              className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
-                                selectedAnalyseMetric === 'gwp'
-                                  ? 'bg-[#5A5A40] text-white font-bold'
-                                  : 'text-gray-500 hover:bg-stone-100'
-                              }`}
-                            >
-                              Karbonregnskap (GWP Benchmark)
-                            </button>
-                          </div>
+                    {/* Sub-tab navigation under Resultatanalyse */}
+                    <div className="flex items-center gap-3 border-b border-[#eeede6] pb-2 overflow-x-auto">
+                      <button
+                        id="btn-subnav-analyse-ytelse"
+                        onClick={() => {
+                          if (selectedAnalyseMetric === 'trend' || selectedAnalyseMetric === 'weather') setSelectedAnalyseMetric('styrke');
+                        }}
+                        className={`flex items-center gap-2 text-xs font-bold py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                          selectedAnalyseMetric !== 'trend' && selectedAnalyseMetric !== 'weather'
+                            ? 'bg-[#5A5A40] text-white shadow-xs'
+                            : 'bg-white text-gray-600 hover:bg-stone-100 border border-[#e2e1d5]'
+                        }`}
+                      >
+                        <LineChart className="w-4 h-4" />
+                        <span>Ytelsesgrafer & Labtester</span>
+                      </button>
 
-                          {/* Chart Container */}
-                          <div className="h-80 w-full mt-2">
-                            {selectedAnalyseMetric === 'styrke' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart
-                                  data={getStrengthData()}
-                                  margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
-                                >
-                                  <defs>
-                                    <linearGradient id="colorStrength" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="5%" stopColor="#5A5A40" stopOpacity={0.4}/>
-                                      <stop offset="95%" stopColor="#5A5A40" stopOpacity={0.0}/>
-                                    </linearGradient>
-                                  </defs>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" />
-                                  <XAxis 
-                                    dataKey="day" 
-                                    tick={{ fontSize: 10, fill: '#666' }} 
-                                    label={{ value: 'Dager', position: 'insideBottom', offset: -5, fontSize: 10, fill: '#666' }} 
-                                  />
-                                  <YAxis 
-                                    tick={{ fontSize: 10, fill: '#666' }} 
-                                    label={{ value: 'Styrke (MPa)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
-                                  />
-                                  <RecTooltip 
-                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
-                                    formatter={(value: any, name: any, props: any) => [`${value} MPa`, `Type: ${props.payload.type}`]}
-                                    labelFormatter={(label) => `Dag ${label}`}
-                                  />
-                                  <Legend wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
-                                  <Area 
-                                    name="Mekanisk fasthet" 
-                                    type="monotone" 
-                                    dataKey="verdi" 
-                                    stroke="#5A5A40" 
-                                    strokeWidth={2}
-                                    fillOpacity={1} 
-                                    fill="url(#colorStrength)" 
-                                  />
-                                </AreaChart>
-                              </ResponsiveContainer>
+                      <button
+                        id="btn-subnav-analyse-trend"
+                        onClick={() => setSelectedAnalyseMetric('trend')}
+                        className={`flex items-center gap-2 text-xs font-bold py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                          selectedAnalyseMetric === 'trend'
+                            ? 'bg-emerald-800 text-white shadow-xs'
+                            : 'bg-white text-gray-600 hover:bg-emerald-50 hover:text-emerald-900 border border-[#e2e1d5]'
+                        }`}
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                        <span>Trend Analyse</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                          selectedAnalyseMetric === 'trend' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          Tidsserie
+                        </span>
+                      </button>
+
+                      <button
+                        id="btn-subnav-analyse-weather"
+                        onClick={() => setSelectedAnalyseMetric('weather')}
+                        className={`flex items-center gap-2 text-xs font-bold py-2 px-4 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+                          selectedAnalyseMetric === 'weather'
+                            ? 'bg-blue-800 text-white shadow-xs'
+                            : 'bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-900 border border-[#e2e1d5]'
+                        }`}
+                      >
+                        <CloudSun className="w-4 h-4 text-amber-500" />
+                        <span>Sanntids Vær- & Fuktkorrelasjon</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                          selectedAnalyseMetric === 'weather' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          Live
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Conditional render: Weather Correlation vs Trend Analyse View vs Standard Performance Graphs */}
+                    {selectedAnalyseMetric === 'weather' ? (
+                      activeMaterial && (
+                        <WeatherMoistureCorrelation
+                          material={activeMaterial}
+                          allMaterials={materials}
+                          onAddMeasurement={handleAddSingleMeasurement}
+                        />
+                      )
+                    ) : selectedAnalyseMetric === 'trend' ? (
+                      activeMaterial && (
+                        <HistoricalTrendAnalysis
+                          material={activeMaterial}
+                          allMaterials={materials}
+                          onAddMeasurement={handleAddSingleMeasurement}
+                          onDeleteMeasurement={handleDeleteMeasurement}
+                          onBatchAddMeasurements={handleBatchAddMeasurements}
+                        />
+                      )
+                    ) : (
+                      /* Chart & Interaction Section */
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* Left side: Visualizations */}
+                        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs flex flex-col justify-between">
+                          <div>
+                            {/* Inner Tabs for chart switching */}
+                            <div className="flex border-b border-[#eeede6] pb-3 mb-5 gap-3 overflow-x-auto">
+                              <button
+                                onClick={() => setSelectedAnalyseMetric('styrke')}
+                                className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
+                                  selectedAnalyseMetric === 'styrke'
+                                    ? 'bg-[#5A5A40] text-white font-bold'
+                                    : 'text-gray-500 hover:bg-stone-100'
+                                }`}
+                              >
+                                Styrkeutvikling (MPa)
+                              </button>
+                              <button
+                                onClick={() => setSelectedAnalyseMetric('fuktighet')}
+                                className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
+                                  selectedAnalyseMetric === 'fuktighet'
+                                    ? 'bg-[#5A5A40] text-white font-bold'
+                                    : 'text-gray-500 hover:bg-stone-100'
+                                }`}
+                              >
+                                Fuktabsorpsjon (%)
+                              </button>
+                              <button
+                                onClick={() => setSelectedAnalyseMetric('gwp')}
+                                className={`text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap ${
+                                  selectedAnalyseMetric === 'gwp'
+                                    ? 'bg-[#5A5A40] text-white font-bold'
+                                    : 'text-gray-500 hover:bg-stone-100'
+                                }`}
+                              >
+                                Karbonregnskap (GWP Benchmark)
+                              </button>
+                              <button
+                                id="btn-inner-tab-trend"
+                                onClick={() => setSelectedAnalyseMetric('trend')}
+                                className="text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 text-emerald-800 hover:bg-emerald-50 cursor-pointer"
+                              >
+                                <TrendingUp className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>Trend Analyse</span>
+                              </button>
+                              <button
+                                id="btn-inner-tab-weather"
+                                onClick={() => setSelectedAnalyseMetric('weather')}
+                                className="text-xs font-bold py-1.5 px-3 rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 text-blue-800 hover:bg-blue-50 cursor-pointer"
+                              >
+                                <CloudSun className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Vær- & Klimakorrelasjon</span>
+                              </button>
+                            </div>
+
+                          {/* Animated Spring Banner for Measurement Updates */}
+                          <AnimatePresence>
+                            {recentMeasNotification && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -12, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                transition={{ type: "spring", stiffness: 450, damping: 25 }}
+                                className="mb-3 px-4 py-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between text-xs text-emerald-900 shadow-xs"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+                                  </span>
+                                  <div>
+                                    <span className="font-bold">{recentMeasNotification.title} </span>
+                                    <span className="text-emerald-700">{recentMeasNotification.subtitle}</span>
+                                  </div>
+                                </div>
+                                <span className="text-[10px] font-mono uppercase bg-emerald-200/80 px-2 py-0.5 rounded text-emerald-950 font-bold shrink-0">
+                                  Spring-respons
+                                </span>
+                              </motion.div>
                             )}
+                          </AnimatePresence>
 
-                            {selectedAnalyseMetric === 'fuktighet' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <RecLineChart
-                                  data={getMoistureData()}
-                                  margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
-                                >
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" />
-                                  <XAxis 
-                                    dataKey="rh" 
-                                    tick={{ fontSize: 10, fill: '#666' }} 
-                                    label={{ value: 'Relativ Luftfuktighet (RH %)', position: 'insideBottom', offset: -5, fontSize: 10, fill: '#666' }} 
-                                  />
-                                  <YAxis 
-                                    tick={{ fontSize: 10, fill: '#666' }} 
-                                    label={{ value: 'Vannabsorpsjon (% vekt)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
-                                  />
-                                  <RecTooltip 
-                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
-                                    formatter={(value: any, name: any, props: any) => [`${value}%`, `Type: ${props.payload.type}`]}
-                                    labelFormatter={(label) => `RH: ${label}%`}
-                                  />
-                                  <Legend wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
-                                  <Line 
-                                    name="Fuktighetsopptak" 
-                                    type="monotone" 
-                                    dataKey="verdi" 
-                                    stroke="#3b82f6" 
-                                    strokeWidth={2.5}
-                                    activeDot={{ r: 6 }} 
-                                  />
-                                </RecLineChart>
-                              </ResponsiveContainer>
-                            )}
+                          {/* Chart Container with Spring-Transition on Data Updates */}
+                          <motion.div
+                            key={`chart-container-${selectedAnalyseMetric}-${activeMaterial.id}-${activeMaterial.measurements?.length || 0}`}
+                            initial={{ opacity: 0.9, scale: 0.995 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ type: "spring", stiffness: 320, damping: 25 }}
+                            className="w-full"
+                          >
+                            {selectedAnalyseMetric === 'styrke' ? (
+                              <div className="mt-2">
+                                <TrendChart 
+                                  material={activeMaterial} 
+                                  measurements={activeMaterial.measurements} 
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-full mt-2">
+                                {selectedAnalyseMetric === 'fuktighet' && (
+                                  <div className="space-y-3">
+                                    <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                      <div className="flex items-center gap-2">
+                                        <CloudSun className="w-4 h-4 text-blue-700 shrink-0" />
+                                        <span className="text-blue-950 font-medium">
+                                          Vil du se hvordan fuktopptaket korrelerer med <strong>sanntids utendørs klima</strong> (temperatur og relativ fuktighet fra målestasjoner)?
+                                        </span>
+                                      </div>
+                                      <button
+                                        onClick={() => setSelectedAnalyseMetric('weather')}
+                                        className="bg-blue-700 hover:bg-blue-800 text-white font-bold px-3 py-1.5 rounded-lg text-[11px] whitespace-nowrap cursor-pointer transition-all shadow-xs flex items-center gap-1 shrink-0 self-start sm:self-auto"
+                                      >
+                                        <span>Åpne Værkorrelasjon</span>
+                                        <ArrowRight className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
 
-                            {selectedAnalyseMetric === 'gwp' && (
-                              <ResponsiveContainer width="100%" height="100%">
-                                <RecBarChart
-                                  data={getGwpBenchmarkData()}
-                                  margin={{ top: 15, right: 10, left: -10, bottom: 20 }}
-                                >
-                                  <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" vertical={false} />
-                                  <XAxis 
-                                    dataKey="name" 
-                                    tick={{ fontSize: 9, fill: '#666' }} 
-                                    interval={0}
-                                    angle={-15}
-                                    textAnchor="end"
-                                  />
-                                  <YAxis 
-                                    tick={{ fontSize: 10, fill: '#666' }} 
-                                    label={{ value: 'kg CO₂ eq/kg', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
-                                  />
-                                  <RecTooltip 
-                                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
-                                    formatter={(value: any) => [`${value} kg CO₂ eq/kg`, 'Karbonintensitet']}
-                                  />
-                                  <Bar 
-                                    dataKey="gwp" 
-                                    name="Drivhuspotensial (GWP)"
-                                    radius={[4, 4, 0, 0]}
+                                    <div className="h-80 w-full">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <RecLineChart
+                                          data={getMoistureData()}
+                                          margin={{ top: 10, right: 20, left: -10, bottom: 0 }}
+                                        >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" />
+                                        <XAxis 
+                                          dataKey="rh" 
+                                          tick={{ fontSize: 10, fill: '#666' }} 
+                                          label={{ value: 'Relativ Luftfuktighet (RH %)', position: 'insideBottom', offset: -5, fontSize: 10, fill: '#666' }} 
+                                        />
+                                        <YAxis 
+                                          tick={{ fontSize: 10, fill: '#666' }} 
+                                          label={{ value: 'Vannabsorpsjon (% vekt)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
+                                        />
+                                        <RecTooltip 
+                                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
+                                          formatter={(value: any, name: any, props: any) => [`${value}%`, `Type: ${props.payload.type}`]}
+                                          labelFormatter={(label) => `RH: ${label}%`}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: '10px', marginTop: '5px' }} />
+                                        <Line 
+                                          key={`moisture-line-${getMoistureData().length}-${activeMaterial.measurements?.length || 0}`}
+                                          name="Fuktighetsopptak" 
+                                          type="monotone" 
+                                          dataKey="verdi" 
+                                          stroke="#3b82f6" 
+                                          strokeWidth={2.5} 
+                                          activeDot={{ r: 6 }}
+                                          isAnimationActive={true}
+                                          animationDuration={750}
+                                          animationEasing="ease-out"
+                                        />
+                                      </RecLineChart>
+                                    </ResponsiveContainer>
+                                  </div>
+                                </div>
+                              )}
+
+                              {selectedAnalyseMetric === 'gwp' && (
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <RecBarChart
+                                    data={getGwpBenchmarkData()}
+                                    margin={{ top: 15, right: 10, left: -10, bottom: 20 }}
                                   >
-                                    {getGwpBenchmarkData().map((entry, index) => {
-                                      let fill = '#a8a29e'; // Default gray for reference
-                                      if (entry.isCurrent) {
-                                        fill = '#5A5A40'; // Deep signature color for current material
-                                      } else if (entry.gwp < 0) {
-                                        fill = '#10b981'; // Bright green for carbon-negative
-                                      } else if (entry.gwp > 100) {
-                                        fill = '#ef4444'; // Red for heavy GWP
-                                      } else if (entry.gwp > 0) {
-                                        fill = '#f59e0b'; // Amber for standard positive GWP
-                                      }
-                                      return <Cell key={`cell-${index}`} fill={fill} />;
-                                    })}
-                                  </Bar>
-                                </RecBarChart>
-                              </ResponsiveContainer>
-                            )}
-                          </div>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#eeede6" vertical={false} />
+                                    <XAxis 
+                                      dataKey="name" 
+                                      tick={{ fontSize: 9, fill: '#666' }} 
+                                      interval={0}
+                                      angle={-15}
+                                      textAnchor="end"
+                                    />
+                                    <YAxis 
+                                      tick={{ fontSize: 10, fill: '#666' }} 
+                                      label={{ value: 'kg CO₂ eq/kg', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: '#666' }} 
+                                    />
+                                    <RecTooltip 
+                                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #dcdad0', borderRadius: '8px', fontSize: '11px' }}
+                                      formatter={(value: any) => [`${value} kg CO₂ eq/kg`, 'Karbonintensitet']}
+                                    />
+                                    <Bar 
+                                      key={`gwp-bar-${activeMaterial.epd?.gwp}-${activeMaterial.measurements?.length || 0}`}
+                                      dataKey="gwp" 
+                                      name="Drivhuspotensial (GWP)"
+                                      radius={[4, 4, 0, 0]}
+                                      isAnimationActive={true}
+                                      animationDuration={750}
+                                      animationEasing="ease-out"
+                                    >
+                                      {getGwpBenchmarkData().map((entry, index) => {
+                                        let fill = '#a8a29e'; // Default gray for reference
+                                        if (entry.isCurrent) {
+                                          fill = '#5A5A40'; // Deep signature color for current material
+                                        } else if (entry.gwp < 0) {
+                                          fill = '#10b981'; // Bright green for carbon-negative
+                                        } else if (entry.gwp > 100) {
+                                          fill = '#ef4444'; // Red for heavy GWP
+                                        } else if (entry.gwp > 0) {
+                                          fill = '#f59e0b'; // Amber for standard positive GWP
+                                        }
+                                        return <Cell key={`cell-${index}`} fill={fill} />;
+                                      })}
+                                    </Bar>
+                                  </RecBarChart>
+                                </ResponsiveContainer>
+                              )}
+                            </div>
+                          )}
+                          </motion.div>
                         </div>
 
                         {/* Chart Legend Explanation */}
@@ -4793,6 +5584,24 @@ export default function App() {
                               />
                             </div>
 
+                            {/* Live Spring-Feedback Preview */}
+                            <AnimatePresence>
+                              {newMeasValue !== '' && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0, scale: 0.96 }}
+                                  animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                                  exit={{ opacity: 0, height: 0, scale: 0.96 }}
+                                  transition={{ type: "spring", stiffness: 420, damping: 25 }}
+                                  className="p-2.5 bg-emerald-50/80 border border-emerald-300 rounded-xl text-[11px] text-emerald-950 flex items-center gap-2 overflow-hidden"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                  <span className="truncate">
+                                    <strong>Sanntids forhåndsvisning:</strong> Plottes som <strong>{newMeasValue} {newMeasParam === 'strength' ? 'MPa' : newMeasParam === 'moisture' ? '%' : 'kg CO₂ eq/kg'}</strong> ({newMeasLabel || 'oppgitt punkt'}).
+                                  </span>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
                             {activeMaterial?.experiments && activeMaterial.experiments.length > 0 && (
                               <div>
                                 <label className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Tilknytt laboratorieforsøk (valgfritt)</label>
@@ -4813,17 +5622,22 @@ export default function App() {
 
                             <button
                               type="submit"
-                              className="w-full bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2 rounded-xl text-[11px] uppercase tracking-wider font-bold transition-colors shadow-xs"
+                              className="w-full bg-[#5A5A40] hover:bg-[#4a4a34] text-white py-2 rounded-xl text-[11px] uppercase tracking-wider font-bold transition-colors shadow-xs cursor-pointer"
                             >
                               Lagre i laboratorie-databasen
                             </button>
                           </form>
                         </div>
 
-                        {/* List of custom registered measurements */}
+                        {/* List of custom registered measurements with spring transitions */}
                         <div className="bg-white rounded-2xl p-5 border border-[#e2e1d5] shadow-xs">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A5A40] border-b border-[#eeede6] pb-2.5 mb-3">
-                            Registrerte Lab-målinger ({activeMaterial?.measurements?.length || 0})
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[#5A5A40] border-b border-[#eeede6] pb-2.5 mb-3 flex items-center justify-between">
+                            <span>Registrerte Lab-målinger ({activeMaterial?.measurements?.length || 0})</span>
+                            {activeMaterial?.measurements && activeMaterial.measurements.length > 0 && (
+                              <span className="text-[10px] font-normal text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                Spring-synkronisert
+                              </span>
+                            )}
                           </h4>
 
                           {!activeMaterial?.measurements || activeMaterial.measurements.length === 0 ? (
@@ -4832,32 +5646,56 @@ export default function App() {
                             </p>
                           ) : (
                             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                              {activeMaterial.measurements.map((meas) => (
-                                <div key={meas.id} className="p-2.5 bg-[#f9f9f7] rounded-xl border border-[#eeede6] text-[11px] flex justify-between items-center hover:border-gray-300 transition-colors">
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={`w-1.5 h-1.5 rounded-full ${
-                                        meas.parameter === 'strength' ? 'bg-[#5A5A40]' :
-                                        meas.parameter === 'moisture' ? 'bg-blue-500' : 'bg-emerald-600'
-                                      }`}></span>
-                                      <span className="font-bold text-gray-800">
-                                        {meas.value} {meas.parameter === 'strength' ? 'MPa' : meas.parameter === 'moisture' ? '%' : 'kg CO₂ eq/kg'}
-                                      </span>
-                                      <span className="text-gray-400">({meas.label})</span>
-                                    </div>
-                                    <div className="text-[9px] text-gray-400">
-                                      {meas.experimentTitle ? `Tilknyttet: ${meas.experimentTitle}` : 'Generell test'} • {meas.timestamp}
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => handleDeleteMeasurement(meas.id)}
-                                    className="text-gray-400 hover:text-red-600 p-1"
-                                    title="Slett måling"
+                              <AnimatePresence initial={false}>
+                                {activeMaterial.measurements.map((meas, idx) => (
+                                  <motion.div
+                                    key={meas.id || `meas-${idx}`}
+                                    layout="position"
+                                    initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9, height: 0 }}
+                                    transition={{
+                                      type: "spring",
+                                      stiffness: 420,
+                                      damping: 26,
+                                      delay: Math.min(idx * 0.02, 0.2),
+                                    }}
+                                    className={`p-2.5 rounded-xl border text-[11px] flex justify-between items-center transition-all ${
+                                      meas.id === recentlyAddedMeasId
+                                        ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-300/40 shadow-xs'
+                                        : 'bg-[#f9f9f7] border-[#eeede6] hover:border-gray-300'
+                                    }`}
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ))}
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${
+                                          meas.parameter === 'strength' ? 'bg-[#5A5A40]' :
+                                          meas.parameter === 'moisture' ? 'bg-blue-500' : 'bg-emerald-600'
+                                        }`}></span>
+                                        <span className="font-bold text-gray-800">
+                                          {meas.value} {meas.parameter === 'strength' ? 'MPa' : meas.parameter === 'moisture' ? '%' : 'kg CO₂ eq/kg'}
+                                        </span>
+                                        <span className="text-gray-500">({meas.label})</span>
+                                        {meas.id === recentlyAddedMeasId && (
+                                          <span className="text-[9px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded-full">
+                                            Akkurat plottet
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[9px] text-gray-400">
+                                        {meas.experimentTitle ? `Tilknyttet: ${meas.experimentTitle}` : 'Generell test'} • {meas.timestamp}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleDeleteMeasurement(meas.id)}
+                                      className="text-gray-400 hover:text-red-600 p-1 cursor-pointer"
+                                      title="Slett måling"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </motion.div>
+                                ))}
+                              </AnimatePresence>
                             </div>
                           )}
                         </div>
@@ -4865,6 +5703,7 @@ export default function App() {
                       </div>
 
                     </div>
+                    )}
 
                     {/* ================= TIDSLINJEVISNING FOR ALLE LAGREDE TESTRESULTATER ================= */}
                     <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-xs space-y-6">
@@ -5057,11 +5896,31 @@ export default function App() {
                               </div>
                             ) : (
                               <div className="relative border-l-2 border-[#e2e1d5] ml-4 sm:ml-6 space-y-6 py-2">
-                                {filtered.map((evt) => (
-                                  <div key={evt.id} className="relative pl-6 sm:pl-8 group">
+                                {filtered.map((evt, idx) => (
+                                  <motion.div 
+                                    key={evt.id} 
+                                    initial={{ opacity: 0, y: 32 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true, margin: "-40px" }}
+                                    transition={{
+                                      duration: 0.5,
+                                      ease: [0.22, 1, 0.36, 1],
+                                      delay: Math.min((idx % 5) * 0.08, 0.32)
+                                    }}
+                                    className="relative pl-6 sm:pl-8 group"
+                                  >
                                     
                                     {/* Timeline Node Badge Icon */}
-                                    <div className={`absolute -left-[17px] sm:-left-[21px] top-1.5 w-8 h-8 rounded-full border-2 border-white shadow-xs flex items-center justify-center shrink-0 z-10 ${
+                                    <motion.div 
+                                      initial={{ scale: 0.6, opacity: 0 }}
+                                      whileInView={{ scale: 1, opacity: 1 }}
+                                      viewport={{ once: true, margin: "-40px" }}
+                                      transition={{
+                                        duration: 0.4,
+                                        ease: 'easeOut',
+                                        delay: Math.min((idx % 5) * 0.08 + 0.1, 0.38)
+                                      }}
+                                      className={`absolute -left-[17px] sm:-left-[21px] top-1.5 w-8 h-8 rounded-full border-2 border-white shadow-xs flex items-center justify-center shrink-0 z-10 ${
                                       evt.type === 'maling' ? 'bg-emerald-700 text-white' :
                                       evt.type === 'foto' ? 'bg-blue-700 text-white' :
                                       evt.type === 'ai_analyse' ? 'bg-purple-700 text-white' :
@@ -5077,7 +5936,7 @@ export default function App() {
                                       {evt.iconType === 'flame' && <Flame className="w-4 h-4" />}
                                       {evt.iconType === 'award' && <Award className="w-4 h-4" />}
                                       {evt.iconType === 'droplets' && <Droplets className="w-4 h-4" />}
-                                    </div>
+                                    </motion.div>
 
                                     {/* Event Card */}
                                     <div className="bg-[#fcfcf9] hover:bg-white border border-[#e2e1d5] hover:border-[#5A5A40]/40 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all space-y-2.5">
@@ -5181,7 +6040,7 @@ export default function App() {
 
                                     </div>
 
-                                  </div>
+                                  </motion.div>
                                 ))}
                               </div>
                             )}
@@ -5305,12 +6164,18 @@ export default function App() {
             unrealConfig={unrealConfig}
             setUnrealConfig={setUnrealConfig}
             evaChatMessages={evaChatMessages}
+            setEvaChatMessages={setEvaChatMessages}
             evaInputText={evaInputText}
             setEvaInputText={setEvaInputText}
             evaIsThinking={evaIsThinking}
             unrealLogs={unrealLogs}
+            setUnrealLogs={setUnrealLogs}
             handleSendEvaMessage={handleSendEvaMessage}
             onOpenDesktopModal={() => setShowWindowsDesktopModal(true)}
+            materials={materials}
+            selectedMaterialId={selectedMaterialId}
+            setSelectedMaterialId={setSelectedMaterialId}
+            researchers={researchers}
           />
         </div>
       )}
@@ -5918,6 +6783,70 @@ export default function App() {
           setShowCompareModal(false);
         }}
       />
+
+      {/* Material Data Table & CSV Export Modal */}
+      <MaterialTableModal
+        isOpen={showMaterialTableModal}
+        onClose={() => setShowMaterialTableModal(false)}
+        materials={materials}
+        researchers={researchers}
+        userSpaces={userSpaces}
+        initialSelectedIds={selectedMaterialIdsForBulk}
+        onSelectMaterial={(id) => {
+          setSelectedMaterialId(id);
+          setActiveTab('oversikt');
+        }}
+      />
+
+      {/* Floating Toast Notification for CSV Export */}
+      {csvToastNotification && (
+        <div className="fixed bottom-6 left-6 z-50 max-w-md animate-fade-in shadow-2xl">
+          <div className="p-4 rounded-2xl border flex items-center gap-3 backdrop-blur-md bg-emerald-950/95 text-white border-emerald-500/50">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="text-xs font-semibold leading-relaxed pr-2">
+              {csvToastNotification}
+            </div>
+            <button
+              onClick={() => setCsvToastNotification(null)}
+              className="text-white/60 hover:text-white ml-auto p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              title="Lukk varsel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification for PDF Generation & Downloads */}
+      {pdfToastNotification && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md animate-fade-in shadow-2xl">
+          <div className={`p-4 rounded-2xl border flex items-center gap-3 backdrop-blur-md ${
+            pdfToastNotification.type === 'success'
+              ? 'bg-[#1e3020]/95 text-white border-emerald-500/50'
+              : pdfToastNotification.type === 'error'
+              ? 'bg-rose-950/95 text-white border-rose-500/50'
+              : 'bg-[#292922]/95 text-white border-amber-400/50'
+          }`}>
+            {pdfToastNotification.type === 'info' ? (
+              <Loader2 className="w-5 h-5 text-amber-300 animate-spin shrink-0" />
+            ) : pdfToastNotification.type === 'success' ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+            )}
+            <div className="text-xs font-semibold leading-relaxed pr-2">
+              {pdfToastNotification.message}
+            </div>
+            <button
+              onClick={() => setPdfToastNotification(null)}
+              className="text-white/60 hover:text-white ml-auto p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              title="Lukk varsel"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

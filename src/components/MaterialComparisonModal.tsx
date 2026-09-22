@@ -16,9 +16,11 @@ import {
   TrendingDown,
   TrendingUp,
   Activity,
-  Printer
+  Printer,
+  FileSpreadsheet
 } from 'lucide-react';
 import { BioMaterial } from '../types';
+import { downloadComparisonCsv } from '../utils/csvExporter';
 
 interface MaterialComparisonModalProps {
   isOpen?: boolean;
@@ -129,6 +131,15 @@ Kilde: BioBuild Evidence Lab (Alive Houses AS)
     window.print();
   };
 
+  const handleExportCsv = () => {
+    if (!matA || !matB) return;
+    downloadComparisonCsv(matA, matB, [], undefined, {
+      delimiter: ';',
+      decimalSeparator: ',',
+      includeBom: true,
+    });
+  };
+
   const content = (
     <div 
       id={embedded ? "material-comparison-panel" : "material-comparison-dialog"}
@@ -158,6 +169,17 @@ Kilde: BioBuild Evidence Lab (Alive Houses AS)
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="btn-compare-export-csv"
+            onClick={handleExportCsv}
+            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-xl border border-[#dcdad0] bg-white hover:bg-emerald-50 text-emerald-900 transition-all cursor-pointer shadow-2xs"
+            title="Last ned side-om-side sammenligningstabell som CSV for Excel"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
+            <span>Eksporter CSV</span>
+          </button>
+
           <button
             type="button"
             onClick={handleCopySummary}

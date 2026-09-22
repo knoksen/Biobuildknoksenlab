@@ -15,6 +15,15 @@ export interface OpenQuestion {
   status: 'Åpen' | 'Under utforsking' | 'Løst';
 }
 
+export interface ExperimentNote {
+  id: string;
+  timestamp: string;
+  content: string;
+  author: string;
+  category: 'Observasjon' | 'Måling & Prøving' | 'Miljø & Klima' | 'Avvik / Anomali' | 'Metodejustering';
+  tags?: string[];
+}
+
 export interface Experiment {
   id: string;
   title: string;
@@ -26,6 +35,7 @@ export interface Experiment {
   endDate?: string;
   logs: string[];
   results?: string;
+  notes?: ExperimentNote[];
 }
 
 export interface ProvenTestingMark {
@@ -108,6 +118,8 @@ export interface ImageTag {
   y: number; // 0-100 percentage
   label: string;
   category: 'Sprekk' | 'Fukt' | 'Delaminering' | 'Misfarging' | 'Generelt';
+  isAiSuggested?: boolean;
+  severity?: string;
 }
 
 export interface UserSpace {
