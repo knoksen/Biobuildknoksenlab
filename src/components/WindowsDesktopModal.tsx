@@ -75,7 +75,7 @@ export default function WindowsDesktopModal({
 AppId={{D3A15812-7890-4A3C-9428-B4C728E298F1}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-DefaultDirName={autopf}\\{#MyAppName}
+DefaultDirName={localappdata}\\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\\dist-installer
 OutputBaseFilename=BioBuild_Evidence_Lab_Setup_v1.0.0
@@ -83,6 +83,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+PrivilegesRequired=lowest
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -94,12 +95,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\\dist\\*"; DestDir: "{app}\\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\\package.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\\metadata.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\\start-app.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\\run-win-inst.bat"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\\node_modules\\*"; DestDir: "{app}\\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\\{#MyAppName}"; Filename: "{app}\\start-app.cmd"
-Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\start-app.cmd"; Tasks: desktopicon
+Name: "{group}\\{#MyAppName}"; Filename: "{app}\\start-app.cmd"; WorkingDir: "{app}"
+Name: "{autodesktop}\\{#MyAppName}"; Filename: "{app}\\start-app.cmd"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\\start-app.cmd"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: shellexec nowait postinstall skipifsilent
@@ -108,8 +111,7 @@ Filename: "{app}\\start-app.cmd"; Description: "{cm:LaunchProgram,{#StringChange
   };
 
   const handleDownloadBatchInstaller = () => {
-    const bat = `@echo off\r\nchcp 65001 >nul\r\ntitle BioBuild Evidence Lab - 1-Klikk Windows Setup\r\ncolor 0A\r\necho ====================================================================\r\necho   BioBuild Evidence Lab - Windows Installer Setup (.EXE)\r\necho   Alive Houses AS\r\necho ====================================================================\r\necho.\r\nset "TARGET_DIR=%LOCALAPPDATA%\\Programs\\BioBuild Evidence Lab"\r\necho Installerer til: %TARGET_DIR%\r\nif not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"\r\nif not exist "%TARGET_DIR%\\dist" mkdir "%TARGET_DIR%\\dist"\r\nxcopy /E /I /Y "dist" "%TARGET_DIR%\\dist" >nul\r\ncopy /Y "package.json" "%TARGET_DIR%\\" >nul\r\ncopy /Y "start-app.cmd" "%TARGET_DIR%\\" >nul\r\ncopy /Y "run-win-inst.bat" "%TARGET_DIR%\\" >nul\r\necho Oppretter skrivebordsnarvei...\r\nset "SCRIPT=%TEMP%\\mk_sc.vbs"\r\necho Set W = WScript.CreateObject("WScript.Shell") > "%SCRIPT%"\r\necho Set S = W.CreateShortcut(W.SpecialFolders("Desktop") ^& "\\BioBuild Evidence Lab.lnk") >> "%SCRIPT%"\r\necho S.TargetPath = "%TARGET_DIR%\\start-app.cmd" >> "%SCRIPT%"\r\necho S.WorkingDirectory = "%TARGET_DIR%" >> "%SCRIPT%"\r\necho S.Save >> "%SCRIPT%"\r\ncscript /nologo "%SCRIPT%" >nul\r\ndel "%SCRIPT%"\r\necho [✓] Fullfort! BioBuild er installert pa skrivebordet ditt.\r\npause\r\nstart "" "%TARGET_DIR%\\start-app.cmd"\r\n`;
-    triggerDownload('install-biobuild.cmd', bat, 'application/cmd');
+    window.location.href = '/api/desktop/file/run-win-installer.bat';
   };
 
   const handleStartSimulatedInstall = () => {

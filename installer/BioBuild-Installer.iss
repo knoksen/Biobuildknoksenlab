@@ -24,7 +24,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 
 ; Destination Directories
-DefaultDirName={autopf}\{#MyAppName}
+DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=no
 AllowNoIcons=yes
@@ -61,18 +61,19 @@ Name: "firewall"; Description: "Konfigurer Windows Firewall for Pixel Streaming 
 ; Dist application files
 Source: "..\dist\*"; DestDir: "{app}\dist"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Backend and configuration
-Source: "..\dist\server.cjs"; DestDir: "{app}\dist"; Flags: ignoreversion
 Source: "..\package.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\metadata.json"; DestDir: "{app}"; Flags: ignoreversion
 ; Desktop launcher scripts
 Source: "..\start-app.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\run-win-inst.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\run-win-inst.ps1"; DestDir: "{app}"; Flags: ignoreversion
+; Node modules for offline execution if packaged
+Source: "..\node_modules\*"; DestDir: "{app}\node_modules"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 ; Desktop Electron bridge if packaged
-Source: "..\desktop\*"; DestDir: "{app}\desktop"; Flags: ignoreversion recursesubdirs createallsubdirs; Permissions: users-readexec
+Source: "..\desktop\*"; DestDir: "{app}\desktop"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncher}"; WorkingDir: "{app}"; IconFilename: "{app}\dist\favicon.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncher}"; WorkingDir: "{app}"
 Name: "{group}\Unreal Engine 5.4 Pixel Streaming (Win Inst)"; Filename: "{app}\run-win-inst.bat"; WorkingDir: "{app}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppLauncher}"; WorkingDir: "{app}"; Tasks: desktopicon

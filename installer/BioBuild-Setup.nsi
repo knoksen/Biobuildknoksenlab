@@ -49,11 +49,16 @@ Section "BioBuild Core Application (Obligatorisk)" SecCore
   File "..\start-app.cmd"
   File "..\run-win-inst.bat"
   File "..\run-win-inst.ps1"
-  File /r "..\desktop"
+  File /nonfatal "..\metadata.json"
+  File /nonfatal /r "..\desktop"
+  File /nonfatal /r "..\node_modules"
 
   ; Registry Keys
   WriteRegStr HKCU "Software\AliveHouses\BioBuild" "Install_Dir" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "DisplayName" "BioBuild Evidence Lab"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "DisplayVersion" "1.0.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "Publisher" "Alive Houses AS"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "UninstallString" '"$INSTDIR\uninstall.exe"'
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BioBuildEvidenceLab" "NoRepair" 1
@@ -61,14 +66,14 @@ Section "BioBuild Core Application (Obligatorisk)" SecCore
 SectionEnd
 
 Section "Skrivebordsikon" SecDesktop
-  CreateShortcut "$DESKTOP\BioBuild Evidence Lab.lnk" "$INSTDIR\start-app.cmd" "" "$INSTDIR\start-app.cmd" 0
+  CreateShortcut "$DESKTOP\BioBuild Evidence Lab.lnk" "$INSTDIR\start-app.cmd" "" "" 0
 SectionEnd
 
 Section "Startmeny Snarveier" SecStartMenu
   CreateDirectory "$SMPROGRAMS\BioBuild Evidence Lab"
-  CreateShortcut "$SMPROGRAMS\BioBuild Evidence Lab\BioBuild Evidence Lab.lnk" "$INSTDIR\start-app.cmd" "" "$INSTDIR\start-app.cmd" 0
-  CreateShortcut "$SMPROGRAMS\BioBuild Evidence Lab\Avinstaller BioBuild.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
-  CreateShortcut "$SMPROGRAMS\BioBuild Evidence Lab\Unreal 5.4 Pixel Streaming (Win Inst).lnk" "$INSTDIR\run-win-inst.bat" "" "$INSTDIR\run-win-inst.bat" 0
+  CreateShortcut "$SMPROGRAMS\BioBuild Evidence Lab\BioBuild Evidence Lab.lnk" "$INSTDIR\start-app.cmd" "" "" 0
+  CreateShortcut "$SMPROGRAMS\BioBuild Evidence Lab\Avinstaller BioBuild.lnk" "$INSTDIR\uninstall.exe" "" "" 0
+  CreateShortcut "$SMPROGRAMS\BioBuild Evidence Lab\Unreal 5.4 Pixel Streaming (Win Inst).lnk" "$INSTDIR\run-win-inst.bat" "" "" 0
 SectionEnd
 
 ; Descriptions

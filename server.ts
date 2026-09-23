@@ -10,7 +10,8 @@ import net from 'net';
 dotenv.config();
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const PORT = 3000;
 const ALLOWED_REFERENCE_IMAGE_ORIGINS = new Set<string>([
@@ -66,23 +67,45 @@ app.get('/api/desktop/info', (req, res) => {
         name: 'Inno Setup 6 (.ISS -> .EXE)',
         scriptPath: 'installer/BioBuild-Installer.iss',
         outputExe: 'dist-installer/BioBuild_Evidence_Lab_Setup_v1.0.0.exe',
-        command: 'ISCC.exe installer\\BioBuild-Installer.iss'
+        command: 'ISCC.exe installer\\BioBuild-Installer.iss',
+        downloadUrl: '/api/desktop/file/BioBuild-Installer.iss'
       },
       {
         id: 'nsis',
         name: 'Nullsoft Scriptable Install System (.NSI -> .EXE)',
         scriptPath: 'installer/BioBuild-Setup.nsi',
         outputExe: 'dist-installer/BioBuild_Setup.exe',
-        command: 'makensis installer\\BioBuild-Setup.nsi'
+        command: 'makensis installer\\BioBuild-Setup.nsi',
+        downloadUrl: '/api/desktop/file/BioBuild-Setup.nsi'
       },
       {
         id: 'batch',
         name: '1-Klikk Windows Setup (.BAT / .CMD)',
         scriptPath: 'run-win-installer.bat',
-        command: '.\\run-win-installer.bat'
+        command: '.\\run-win-installer.bat',
+        downloadUrl: '/api/desktop/file/run-win-installer.bat'
       }
     ]
   });
+});
+
+// Download Windows installer scripts directly
+app.get('/api/desktop/file/:filename', (req, res) => {
+  const allowedFiles: Record<string, string> = {
+    'run-win-installer.bat': path.join(process.cwd(), 'run-win-installer.bat'),
+    'install-biobuild.cmd': path.join(process.cwd(), 'installer', 'install-biobuild.cmd'),
+    'BioBuild-Installer.iss': path.join(process.cwd(), 'installer', 'BioBuild-Installer.iss'),
+    'BioBuild-Setup.nsi': path.join(process.cwd(), 'installer', 'BioBuild-Setup.nsi'),
+    'start-app.cmd': path.join(process.cwd(), 'start-app.cmd'),
+    'make-win-exe.bat': path.join(process.cwd(), 'installer', 'make-win-exe.bat'),
+  };
+
+  const filePath = allowedFiles[req.params.filename];
+  if (!filePath || !fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.download(filePath, req.params.filename);
 });
 
 // 1. Generate Material Profile
@@ -433,6 +456,245 @@ Returner svaret på NORSK i strikt JSON-format med følgende felter:
   } catch (error: any) {
     console.error('Error analyzing test image with Gemini:', error);
     res.status(500).json({ error: error.message || 'Kunne ikke gjennomføre visuell AI-analyse av bildet.' });
+  }
+});
+
+// 1b-batch. Batch AI-analyse av flere testbilder samtidig
+app.post('/api/gemini/batch-analyze-images', async (req, res) => {
+  try {
+    const { images, commonMaterialName, category, model, analysisFocus } = req.body;
+
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ error: 'Minst ett testbilde må sendes med i batch-forespørselen.' });
+    }
+
+    if (images.length > 30) {
+      return res.status(400).json({ error: 'Maksimalt 30 bilder kan analyseres per batch.' });
+    }
+
+    const selectedModel = model || 'gemini-3.8-flash';
+    const ai = getAiClient();
+
+    const focusInstructionMap: Record<string, string> = {
+      comprehensive: 'Gjennomfør en helhetlig laboratorievurdering av strukturell fasthet, overflateriss, fuktpåvirkning, biologisk nedbrytning og delaminering.',
+      cracks: 'Fokuser primært på mekaniske mikrosprekker, bruddforløp, skjærspenninger og lastbærende fiberbrudd.',
+      moisture: 'Fokuser primært på fuktinntrengning, hydrotermisk hevelse, mørke flekker, mugg/soppvekst og porøsitetsendringer.',
+      delamination: 'Fokuser primært på overflatedelaminering, fiber-matrise avbinding, avskalling og adhesjonssvikt.',
+    };
+
+    const focusText = focusInstructionMap[analysisFocus || 'comprehensive'] || focusInstructionMap.comprehensive;
+
+    // Concurrently process images in chunks of 3 to optimize speed without exceeding rate limits
+    const results: any[] = [];
+    const chunkSize = 3;
+
+    for (let i = 0; i < images.length; i += chunkSize) {
+      const chunk = images.slice(i, i + chunkSize);
+      const chunkPromises = chunk.map(async (item: any, chunkIndex: number) => {
+        const itemIndex = i + chunkIndex;
+        const startTime = Date.now();
+        const imgData = item.capturedImage || item.data;
+        const itemName = item.name || item.specimenLabel || `Prøve #${itemIndex + 1}`;
+        const itemMatName = item.materialName || commonMaterialName || 'Bio-materiale';
+        const itemStage = item.testStage || 'Standard laboratorietest';
+
+        if (!imgData) {
+          return {
+            id: item.id || `img-${itemIndex}`,
+            name: itemName,
+            status: 'error',
+            error: 'Bilde mangler data eller base64-streng.',
+            durationMs: 0
+          };
+        }
+
+        try {
+          let capturedMime = 'image/jpeg';
+          let capturedBase64 = imgData;
+          if (imgData.startsWith('data:')) {
+            const matches = imgData.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+            if (matches) {
+              capturedMime = matches[1];
+              capturedBase64 = matches[2];
+            }
+          }
+
+          const parts: any[] = [
+            {
+              inlineData: {
+                mimeType: capturedMime,
+                data: capturedBase64,
+              },
+            },
+            {
+              text: `Du er en ledende laboratorie-spesialist på mikroskopi, materialfasthet og strukturell feildiagnostikk for bio-baserte bygningsmaterialer ved BioBuild Evidence Lab (Alive Houses AS).
+
+Analyser testbildet for prøve: "${itemName}".
+Materiale: "${itemMatName}" (${category || 'Konstruktiv bio-kompositt'}).
+Teststadium/betingelse: "${itemStage}".
+Spesifikt analysefokus: ${focusText}.
+
+Gjennomfør en grundig visuell analyse og feildiagnose av prøven.
+Klassifiser alvorlighetsgrad i: 'lav', 'moderat' eller 'kritisk'.
+Angi primær feilmodus som én av: 'Mikrosprekker', 'Fuktinntrengning', 'Delaminering', 'Biologisk nedbrytning', 'Mekanisk brudd', 'Ingen defekt'.
+
+Returner svaret på NORSK i strikt JSON-format.`
+            }
+          ];
+
+          const response = await ai.models.generateContent({
+            model: selectedModel,
+            contents: { parts },
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                required: ['integrityScore', 'overallCondition', 'severity', 'primaryFailureMode', 'defectsDetected', 'detailedAnalysis', 'recommendations'],
+                properties: {
+                  integrityScore: { type: Type.INTEGER, description: 'Heltall fra 0 (total kollaps) til 100 (perfekt uskadet).' },
+                  overallCondition: { type: Type.STRING, description: 'Kortfattet statusoverskrift.' },
+                  severity: { type: Type.STRING, description: 'lav, moderat, eller kritisk' },
+                  primaryFailureMode: { type: Type.STRING, description: 'Mikrosprekker, Fuktinntrengning, Delaminering, Biologisk nedbrytning, Mekanisk brudd, eller Ingen defekt' },
+                  defectsDetected: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '1-4 spesifikke visuelle observasjoner'
+                  },
+                  detailedAnalysis: { type: Type.STRING, description: 'Faglig laboratorievurdering på 2-3 setninger.' },
+                  recommendations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '2-3 konkrete laboratorietiltak.'
+                  },
+                  microscopicObservations: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                    description: '1-3 mikroskopiske overflate-observasjoner'
+                  },
+                  confidenceScore: { type: Type.INTEGER, description: 'Modellens konfidens (50-100).' }
+                }
+              }
+            }
+          });
+
+          const durationMs = Date.now() - startTime;
+          const text = response.text;
+          if (!text) throw new Error('Gemini returnerte tomt svar for prøve.');
+          const parsed = JSON.parse(text.trim());
+
+          return {
+            id: item.id || `img-${itemIndex}`,
+            name: itemName,
+            specimenLabel: itemName,
+            testStage: itemStage,
+            materialName: itemMatName,
+            status: 'completed',
+            durationMs,
+            usedModel: selectedModel,
+            analysis: {
+              integrityScore: parsed.integrityScore ?? 75,
+              overallCondition: parsed.overallCondition || 'Analyse fullført',
+              severity: (['lav', 'moderat', 'kritisk'].includes(parsed.severity?.toLowerCase()) ? parsed.severity.toLowerCase() : 'moderat'),
+              primaryFailureMode: parsed.primaryFailureMode || 'Ingen defekt',
+              defectsDetected: Array.isArray(parsed.defectsDetected) ? parsed.defectsDetected : [],
+              detailedAnalysis: parsed.detailedAnalysis || '',
+              recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+              microscopicObservations: Array.isArray(parsed.microscopicObservations) ? parsed.microscopicObservations : [],
+              confidenceScore: parsed.confidenceScore ?? 88,
+              processingTimeMs: durationMs,
+              usedModel: selectedModel
+            }
+          };
+        } catch (itemErr: any) {
+          console.error(`Feil ved analyse av prøve ${itemName}:`, itemErr);
+          return {
+            id: item.id || `img-${itemIndex}`,
+            name: itemName,
+            specimenLabel: itemName,
+            testStage: itemStage,
+            materialName: itemMatName,
+            status: 'error',
+            durationMs: Date.now() - startTime,
+            error: itemErr.message || 'Analyse feilet for dette bildet.'
+          };
+        }
+      });
+
+      const chunkResults = await Promise.all(chunkPromises);
+      results.push(...chunkResults);
+    }
+
+    // Compute aggregate batch summary
+    const completedItems = results.filter(r => r.status === 'completed' && r.analysis);
+    const totalCount = results.length;
+    const completedCount = completedItems.length;
+
+    let avgIntegrityScore = 0;
+    const defectDistribution = { critical: 0, moderate: 0, low: 0, sound: 0 };
+    const failureModeCounts: Record<string, number> = {};
+    const allDefects: string[] = [];
+
+    if (completedCount > 0) {
+      let sumScore = 0;
+      for (const item of completedItems) {
+        const sc = item.analysis.integrityScore;
+        sumScore += sc;
+        if (sc >= 85) defectDistribution.sound++;
+        else if (item.analysis.severity === 'kritisk') defectDistribution.critical++;
+        else if (item.analysis.severity === 'moderat') defectDistribution.moderate++;
+        else defectDistribution.low++;
+
+        const mode = item.analysis.primaryFailureMode || 'Ukjent';
+        failureModeCounts[mode] = (failureModeCounts[mode] || 0) + 1;
+
+        if (Array.isArray(item.analysis.defectsDetected)) {
+          allDefects.push(...item.analysis.defectsDetected);
+        }
+      }
+      avgIntegrityScore = Math.round(sumScore / completedCount);
+    }
+
+    // Count top common defects
+    const defectCounts: Record<string, number> = {};
+    for (const d of allDefects) {
+      defectCounts[d] = (defectCounts[d] || 0) + 1;
+    }
+    const topDefects = Object.entries(defectCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([defect, count]) => ({ defect, count }));
+
+    // Generate batch verdict
+    let batchVerdict = 'Batch-analyse fullført.';
+    if (completedCount > 0) {
+      if (avgIntegrityScore >= 80) {
+        batchVerdict = `Prøveserien oppviser høy gjennomsnittlig strukturell integritet (${avgIntegrityScore}%). Mindre overflateriss kan observeres, men materialmatrisen fremstår overveiende stabil.`;
+      } else if (avgIntegrityScore >= 60) {
+        batchVerdict = `Prøveserien viser moderat slitasje/nedbrytning (${avgIntegrityScore}% snitt). Flere prøver har begynnende defekter som bør følges opp med mekaniske fasthetstester.`;
+      } else {
+        batchVerdict = `Kritisk tilstand oppdaget i prøveserien (${avgIntegrityScore}% snitt). Betydelig brudd- eller fuktrisiko krever umiddelbar revisjon av bio-komposittens herdeprosess eller fiberbinding.`;
+      }
+    }
+
+    res.json({
+      success: true,
+      modelUsed: selectedModel,
+      batchSummary: {
+        totalSubmitted: totalCount,
+        totalCompleted: completedCount,
+        avgIntegrityScore,
+        defectDistribution,
+        failureModeCounts,
+        topDefects,
+        batchVerdict,
+        analysisFocus: analysisFocus || 'comprehensive',
+        timestamp: new Date().toISOString()
+      },
+      results
+    });
+  } catch (error: any) {
+    console.error('Feil ved batch AI bildeanalyse:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke gjennomføre batch-analyse av testbilder.' });
   }
 });
 
@@ -800,7 +1062,12 @@ async function bootstrap() {
       }
     }
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const candidatePaths = [
+      path.join(process.cwd(), 'dist'),
+      path.join(__dirname, 'dist'),
+      __dirname,
+    ];
+    const distPath = candidatePaths.find(p => fs.existsSync(path.join(p, 'index.html'))) || path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));

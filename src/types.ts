@@ -140,3 +140,48 @@ export interface UserSpace {
   createdAt?: string;
 }
 
+export interface BatchImageItem {
+  id: string;
+  name: string;
+  file?: File;
+  previewUrl: string;
+  fileSizeKb: number;
+  specimenLabel: string;
+  testStage: string;
+  materialName?: string;
+  status: 'pending' | 'analyzing' | 'completed' | 'error';
+  errorMessage?: string;
+  durationMs?: number;
+  result?: {
+    integrityScore: number;
+    overallCondition: string;
+    severity: 'lav' | 'moderat' | 'kritisk';
+    primaryFailureMode: string;
+    defectsDetected: string[];
+    detailedAnalysis: string;
+    recommendations: string[];
+    microscopicObservations?: string[];
+    confidenceScore?: number;
+    processingTimeMs?: number;
+    usedModel?: string;
+  };
+}
+
+export interface BatchAnalysisSummary {
+  totalSubmitted: number;
+  totalCompleted: number;
+  avgIntegrityScore: number;
+  defectDistribution: {
+    critical: number;
+    moderate: number;
+    low: number;
+    sound: number;
+  };
+  failureModeCounts: Record<string, number>;
+  topDefects: Array<{ defect: string; count: number }>;
+  batchVerdict: string;
+  analysisFocus: string;
+  timestamp: string;
+}
+
+

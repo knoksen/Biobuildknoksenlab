@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Beaker, 
   BookOpen, 
@@ -57,7 +57,8 @@ import {
   FileDown,
   FileSpreadsheet,
   CloudSun,
-  ArrowRight
+  ArrowRight,
+  Move
 } from 'lucide-react';
 import { initialBioMaterials, initialResearchers, initialUserSpaces } from './data';
 import { ImageTag } from './types';
@@ -72,6 +73,7 @@ import TrendChart from './components/TrendChart';
 import HistoricalTrendAnalysis from './components/HistoricalTrendAnalysis';
 import WeatherMoistureCorrelation from './components/WeatherMoistureCorrelation';
 import ExperimentNotesSection from './components/ExperimentNotesSection';
+import BatchImageAnalysisModal from './components/BatchImageAnalysisModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport, generateBulkMaterialsPDFReport } from './utils/pdfGenerator';
 import { downloadMaterialsCsv } from './utils/csvExporter';
@@ -99,82 +101,234 @@ const TaggedImageOverlay: React.FC<{
   pendingTagPos: { x: number; y: number } | null;
   onImageClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onRemoveTag: (id: string) => void;
-}> = ({ imageSrc, tags, pendingTagPos, onImageClick, onRemoveTag }) => {
+  onUpdateTagPosition?: (id: string, x: number, y: number) => void;
+}> = ({ imageSrc, tags, pendingTagPos, onImageClick, onRemoveTag, onUpdateTagPosition }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [draggingTagId, setDraggingTagId] = useState<string | null>(null);
+  const [dragLiveCoords, setDragLiveCoords] = useState<{ id: string; x: number; y: number } | null>(null);
+  const hasDraggedRef = useRef(false);
+  const pointerStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const hasMovedSignificantRef = useRef(false);
+
+  const calculatePercentage = (clientX: number, clientY: number) => {
+    if (!containerRef.current) return null;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const x = Math.max(0, Math.min(100, Math.round(((clientX - rect.left) / rect.width) * 100)));
+    const y = Math.max(0, Math.min(100, Math.round(((clientY - rect.top) / rect.height) * 100)));
+    return { x, y };
+  };
+
+  const handlePointerDownOnPin = (e: React.PointerEvent<HTMLDivElement>, tag: ImageTag) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if ((e.target as HTMLElement).closest('button')) return;
+
+    e.stopPropagation();
+    pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
+    hasMovedSignificantRef.current = false;
+    const currentTagId = tag.id;
+
+    const handlePointerMove = (moveEv: PointerEvent) => {
+      const dx = Math.abs(moveEv.clientX - pointerStartPosRef.current.x);
+      const dy = Math.abs(moveEv.clientY - pointerStartPosRef.current.y);
+      if (dx > 3 || dy > 3) {
+        hasMovedSignificantRef.current = true;
+        hasDraggedRef.current = true;
+        setDraggingTagId(currentTagId);
+
+        const coords = calculatePercentage(moveEv.clientX, moveEv.clientY);
+        if (coords) {
+          setDragLiveCoords({ id: currentTagId, x: coords.x, y: coords.y });
+          onUpdateTagPosition?.(currentTagId, coords.x, coords.y);
+        }
+      }
+    };
+
+    const handlePointerUp = (upEv: PointerEvent) => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+
+      if (hasMovedSignificantRef.current) {
+        const coords = calculatePercentage(upEv.clientX, upEv.clientY);
+        if (coords) {
+          onUpdateTagPosition?.(currentTagId, coords.x, coords.y);
+        }
+        setTimeout(() => {
+          hasDraggedRef.current = false;
+        }, 100);
+      }
+      setDraggingTagId(null);
+      setDragLiveCoords(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, tag: ImageTag) => {
+    e.stopPropagation();
+    e.dataTransfer.setData('text/plain', tag.id);
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggingTagId(tag.id);
+    hasDraggedRef.current = true;
+  };
+
+  const handleDragEnd = () => {
+    setDraggingTagId(null);
+    setDragLiveCoords(null);
+    setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 100);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggingTagId) {
+      const coords = calculatePercentage(e.clientX, e.clientY);
+      if (coords) {
+        setDragLiveCoords({ id: draggingTagId, x: coords.x, y: coords.y });
+        onUpdateTagPosition?.(draggingTagId, coords.x, coords.y);
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hasDraggedRef.current = true;
+    const tagId = e.dataTransfer.getData('text/plain') || draggingTagId;
+    if (tagId) {
+      const coords = calculatePercentage(e.clientX, e.clientY);
+      if (coords) {
+        onUpdateTagPosition?.(tagId, coords.x, coords.y);
+      }
+    }
+    setDraggingTagId(null);
+    setDragLiveCoords(null);
+    setTimeout(() => {
+      hasDraggedRef.current = false;
+    }, 100);
+  };
+
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (hasDraggedRef.current) {
+      hasDraggedRef.current = false;
+      return;
+    }
+    onImageClick(e);
+  };
+
   return (
     <div 
-      className="relative w-full h-full cursor-crosshair overflow-hidden group/tagcanvas"
-      onClick={onImageClick}
-      title="Klikk for å plassere merkelapp / avviksnotat"
+      ref={containerRef}
+      className="relative w-full h-full cursor-crosshair overflow-hidden group/tagcanvas select-none"
+      onClick={handleContainerClick}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      title="Klikk for å plassere merkelapp, eller dra en markør for å flytte den"
     >
       <img
         src={imageSrc}
         alt="Testresultat"
-        className="w-full h-full object-cover select-none"
+        className="w-full h-full object-cover select-none pointer-events-none"
       />
 
       {/* Guide hint badge */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/85 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide pointer-events-none opacity-80 group-hover/tagcanvas:opacity-100 transition-opacity flex items-center gap-1 shadow-md z-30">
         <Target className="w-3 h-3 text-amber-400 animate-pulse" />
-        <span>Klikk for merkelapp</span>
+        <span>Klikk for merkelapp • Dra markør for å flytte</span>
       </div>
 
       {/* Numbered Tag Pins */}
-      {tags.map((tag, idx) => (
-        <div
-          key={tag.id}
-          style={{ left: `${tag.x}%`, top: `${tag.y}%` }}
-          className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group/pin"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 ${
-            tag.isAiSuggested ? 'border-amber-300 ring-2 ring-purple-500/50' : 'border-white'
-          } transition-transform transform group-hover/pin:scale-125 ${
-            tag.category === 'Sprekk' ? 'bg-red-600' :
-            tag.category === 'Fukt' ? 'bg-blue-600' :
-            tag.category === 'Delaminering' ? 'bg-orange-600' :
-            tag.category === 'Misfarging' ? 'bg-amber-600' : 'bg-emerald-600'
-          }`}>
-            {idx + 1}
-          </div>
+      {tags.map((tag, idx) => {
+        const isDraggingThis = draggingTagId === tag.id;
+        const currentX = (dragLiveCoords && dragLiveCoords.id === tag.id) ? dragLiveCoords.x : tag.x;
+        const currentY = (dragLiveCoords && dragLiveCoords.id === tag.id) ? dragLiveCoords.y : tag.y;
 
-          {/* Tooltip on pin hover */}
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-52 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
-            <div className="flex items-center justify-between font-bold border-b border-slate-700 pb-1 text-[10px] uppercase text-slate-300">
-              <span className="flex items-center gap-1">
-                <Tag className="w-3 h-3 text-amber-400" /> #{idx + 1} {tag.category}
-                {tag.isAiSuggested && (
-                  <span className="text-[8px] bg-purple-600 text-purple-100 px-1 py-0.2 rounded font-bold ml-1">
-                    ✨ AI
+        return (
+          <div
+            key={tag.id}
+            draggable={true}
+            onDragStart={(e) => handleDragStart(e, tag)}
+            onDragEnd={handleDragEnd}
+            onPointerDown={(e) => handlePointerDownOnPin(e, tag)}
+            style={{ left: `${currentX}%`, top: `${currentY}%` }}
+            className={`absolute -translate-x-1/2 -translate-y-1/2 group/pin animate-pin-entry select-none touch-none cursor-grab active:cursor-grabbing ${
+              isDraggingThis ? 'z-50 is-dragging scale-125' : 'z-40'
+            } pin-category-${
+              tag.category === 'Sprekk' ? 'red' :
+              tag.category === 'Fukt' ? 'blue' :
+              tag.category === 'Delaminering' ? 'orange' :
+              tag.category === 'Misfarging' ? 'amber' : 'emerald'
+            } ${tag.isAiSuggested ? 'pin-ai-suggested' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+            title="Dra og slipp for å flytte merkelapp"
+          >
+            {/* Live drag coordinates readout badge */}
+            {isDraggingThis && (
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-950/95 text-amber-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xl whitespace-nowrap border border-amber-400/60 pointer-events-none flex items-center gap-1 z-50">
+                <Move className="w-2.5 h-2.5" />
+                <span>{currentX}%, {currentY}%</span>
+              </div>
+            )}
+
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 ${
+              tag.isAiSuggested ? 'border-amber-300 ring-2 ring-purple-500/50' : 'border-white'
+            } transition-transform transform ${isDraggingThis ? 'scale-125 shadow-2xl ring-4 ring-white/60' : 'group-hover/pin:scale-125'} ${
+              tag.category === 'Sprekk' ? 'bg-red-600' :
+              tag.category === 'Fukt' ? 'bg-blue-600' :
+              tag.category === 'Delaminering' ? 'bg-orange-600' :
+              tag.category === 'Misfarging' ? 'bg-amber-600' : 'bg-emerald-600'
+            }`}>
+              {idx + 1}
+            </div>
+
+            {/* Tooltip on pin hover (hidden during active drag) */}
+            {!isDraggingThis && (
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-56 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
+                <div className="flex items-center justify-between font-bold border-b border-slate-700 pb-1 text-[10px] uppercase text-slate-300">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-amber-400" /> #{idx + 1} {tag.category}
+                    {tag.isAiSuggested && (
+                      <span className="text-[8px] bg-purple-600 text-purple-100 px-1 py-0.2 rounded font-bold ml-1">
+                        ✨ AI
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRemoveTag(tag.id);
-                }}
-                className="text-red-400 hover:text-red-300 text-[10px] font-bold cursor-pointer"
-              >
-                Slett
-              </button>
-            </div>
-            <p className="text-[11px] text-slate-100 font-medium mt-1">{tag.label}</p>
-            <div className="text-[9px] text-slate-400 mt-0.5 flex justify-between items-center">
-              <span>Pos: ({tag.x}%, {tag.y}%)</span>
-              {tag.severity && (
-                <span className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded ${
-                  tag.severity === 'Kritisk' ? 'bg-red-900/80 text-red-200' :
-                  tag.severity === 'Moderat' ? 'bg-amber-900/80 text-amber-200' :
-                  'bg-blue-900/80 text-blue-200'
-                }`}>
-                  {tag.severity}
-                </span>
-              )}
-            </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveTag(tag.id);
+                    }}
+                    className="text-red-400 hover:text-red-300 text-[10px] font-bold cursor-pointer"
+                  >
+                    Slett
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-100 font-medium mt-1">{tag.label}</p>
+                <div className="text-[9px] text-slate-400 mt-1 flex justify-between items-center">
+                  <span className="flex items-center gap-1 font-mono text-amber-300/90">
+                    <Move className="w-2.5 h-2.5" /> Dra for å flytte ({tag.x}%, {tag.y}%)
+                  </span>
+                  {tag.severity && (
+                    <span className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded ${
+                      tag.severity === 'Kritisk' ? 'bg-red-900/80 text-red-200' :
+                      tag.severity === 'Moderat' ? 'bg-amber-900/80 text-amber-200' :
+                      'bg-blue-900/80 text-blue-200'
+                    }`}>
+                      {tag.severity}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Pending click crosshair marker */}
       {pendingTagPos && (
@@ -729,6 +883,9 @@ export default function App() {
   // Windows Desktop & EXE Installer Modal
   const [showWindowsDesktopModal, setShowWindowsDesktopModal] = useState(false);
 
+  // Batch AI Image Analysis Modal State
+  const [showBatchImageModal, setShowBatchImageModal] = useState(false);
+
   // Material Comparison Modal State
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [compareMaterialAId, setCompareMaterialAId] = useState<string>('');
@@ -1109,6 +1266,12 @@ export default function App() {
     setImageTags(prev => prev.filter(t => t.id !== id));
   };
 
+  const handleUpdateTagPosition = (id: string, x: number, y: number) => {
+    const clampedX = Math.max(0, Math.min(100, Math.round(x)));
+    const clampedY = Math.max(0, Math.min(100, Math.round(y)));
+    setImageTags(prev => prev.map(t => t.id === id ? { ...t, x: clampedX, y: clampedY } : t));
+  };
+
   const handleSaveCapturedPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!capturedImage || !selectedExpIdForPhoto || !activeMaterial) return;
@@ -1155,6 +1318,48 @@ export default function App() {
     setPhotoDescription('');
     setAiAnalysisResult(null);
     alert('Foto og logg med fangede merkelapper og avviksnotater ble lagret i eksperimentets historikk!');
+  };
+
+  const handleSaveBatchTestsToMaterial = (
+    savedTests: {
+      materialId: string;
+      specimenLabel: string;
+      testStage: string;
+      integrityScore: number;
+      notes: string;
+      photoDataUrl: string;
+      defects: string[];
+    }[]
+  ) => {
+    if (!savedTests || savedTests.length === 0) return;
+
+    const dateStr = new Date().toLocaleDateString('no-NO') + ' ' + new Date().toLocaleTimeString('no-NO', { hour: '2-digit', minute: '2-digit' });
+
+    setMaterials(prev => prev.map(m => {
+      const matchingTests = savedTests.filter(t => t.materialId === m.id);
+      if (matchingTests.length === 0) return m;
+
+      const newLogs = matchingTests.map(t => {
+        return `${dateStr}: [Batch AI Bildeanalyse] ${t.specimenLabel} (${t.testStage}) - Integritet: ${t.integrityScore}%. ${t.notes} |||image:${t.photoDataUrl}`;
+      });
+
+      // Append to the first or selected experiment
+      const targetExpId = selectedExpIdForPhoto || m.experiments[0]?.id;
+      const updatedExperiments = m.experiments.map((exp, idx) => {
+        if (exp.id === targetExpId || (idx === 0 && !targetExpId)) {
+          return {
+            ...exp,
+            logs: [...exp.logs, ...newLogs]
+          };
+        }
+        return exp;
+      });
+
+      return {
+        ...m,
+        experiments: updatedExperiments
+      };
+    }));
   };
 
   const handleSaveMeasurement = (e: React.FormEvent) => {
@@ -2571,6 +2776,16 @@ export default function App() {
           </button>
 
           <button 
+            id="btn-open-batch-analysis"
+            onClick={() => setShowBatchImageModal(true)}
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-purple-900 text-purple-100 hover:bg-purple-800 border border-purple-700/70 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
+            title="Last opp flere testbilder samtidig for batch AI-bildeanalyse"
+          >
+            <Layers className="w-4 h-4 text-purple-300" />
+            <span>Batch Bildeanalyse</span>
+          </button>
+
+          <button 
             id="btn-open-windows-desktop"
             onClick={() => setShowWindowsDesktopModal(true)}
             className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-indigo-950 text-indigo-100 hover:bg-indigo-900 border border-indigo-700/70 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
@@ -3485,6 +3700,39 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Batch AI Bildeanalyse Highlight Card */}
+                    <div className="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 border border-purple-800/60 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-600/30 border border-purple-400/40 text-purple-300 flex items-center justify-center shrink-0">
+                          <Layers className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-purple-200">
+                              Batch AI Bildeanalyse Pipeline
+                            </h3>
+                            <span className="text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-bold">
+                              Multi-Image Upload
+                            </span>
+                          </div>
+                          <p className="text-xs text-purple-200/80 mt-1 max-w-xl leading-relaxed">
+                            Last opp flere testbilder samtidig for automatisk mikroskopisk sprekkanalysis, fukt- og delamineringsforensikk med Gemini Vision.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setShowBatchImageModal(true)}
+                          className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Åpne Batch-opplasting</span>
+                        </button>
+                      </div>
+                    </div>
+
                     {/* Kamera Foto-dokumentasjon & Før-og-Etter Sammenligning */}
                     <div className="bg-white rounded-2xl p-6 border border-[#e2e1d5] shadow-sm space-y-6">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#eeede6] pb-4">
@@ -3667,6 +3915,7 @@ export default function App() {
                                         pendingTagPos={pendingTagPos}
                                         onImageClick={handleImageClickToTag}
                                         onRemoveTag={handleRemoveTag}
+                                        onUpdateTagPosition={handleUpdateTagPosition}
                                       />
                                     ) : (
                                       <div className="w-full h-full bg-stone-800/90 flex flex-col items-center justify-center text-center p-6 text-white">
@@ -3762,6 +4011,7 @@ export default function App() {
                                         pendingTagPos={pendingTagPos}
                                         onImageClick={handleImageClickToTag}
                                         onRemoveTag={handleRemoveTag}
+                                        onUpdateTagPosition={handleUpdateTagPosition}
                                       />
                                     ) : (
                                       <div className="text-center p-4 text-xs text-gray-400">
@@ -6796,6 +7046,15 @@ export default function App() {
           setSelectedMaterialId(id);
           setActiveTab('oversikt');
         }}
+      />
+
+      {/* Batch AI Image Analysis Modal */}
+      <BatchImageAnalysisModal
+        isOpen={showBatchImageModal}
+        onClose={() => setShowBatchImageModal(false)}
+        activeMaterial={activeMaterial}
+        availableMaterials={materials}
+        onSaveToMaterialTests={handleSaveBatchTestsToMaterial}
       />
 
       {/* Floating Toast Notification for CSV Export */}

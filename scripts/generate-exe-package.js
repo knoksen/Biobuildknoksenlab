@@ -6,6 +6,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 console.log('====================================================================');
 console.log('  BioBuild Evidence Lab - Klargjør Windows Desktop EXE Distribusjon');
@@ -16,9 +17,14 @@ const rootDir = process.cwd();
 const distDir = path.join(rootDir, 'dist');
 const installerDir = path.join(rootDir, 'dist-installer');
 
-if (!fs.existsSync(distDir)) {
-  console.error('[FEIL] dist/-katalogen mangler. Vennligst kjør `npm run build` først.');
-  process.exit(1);
+if (!fs.existsSync(distDir) || !fs.existsSync(path.join(distDir, 'server.cjs'))) {
+  console.log('[Info] dist/-katalogen eller dist/server.cjs mangler. Kjører produksjonsbygg...');
+  try {
+    execSync('npm run build', { stdio: 'inherit', cwd: rootDir });
+  } catch (err) {
+    console.error('[FEIL] npm run build feilet:', err.message);
+    process.exit(1);
+  }
 }
 
 if (!fs.existsSync(installerDir)) {

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "platform": "win32",
   "arch": "x64",
-  "buildDate": "2026-09-17T15:24:38.282Z",
+  "buildDate": "2026-09-22T08:51:17.037Z",
   "installerFormats": [
     {
       "type": "Inno Setup 6 (.EXE)",
