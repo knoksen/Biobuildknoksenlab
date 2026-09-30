@@ -102,13 +102,111 @@ const TaggedImageOverlay: React.FC<{
   onImageClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onRemoveTag: (id: string) => void;
   onUpdateTagPosition?: (id: string, x: number, y: number) => void;
-}> = ({ imageSrc, tags, pendingTagPos, onImageClick, onRemoveTag, onUpdateTagPosition }) => {
+  onUpdateTag?: (id: string, updates: Partial<ImageTag>) => void;
+  highlightedTagId?: string | null;
+}> = ({ imageSrc, tags, pendingTagPos, onImageClick, onRemoveTag, onUpdateTagPosition, onUpdateTag, highlightedTagId }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [draggingTagId, setDraggingTagId] = useState<string | null>(null);
   const [dragLiveCoords, setDragLiveCoords] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [clickedTagId, setClickedTagId] = useState<string | null>(null);
+  const [hoveredLabelTagId, setHoveredLabelTagId] = useState<string | null>(null);
+  const [contextMenuTagId, setContextMenuTagId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState<string>('');
+  const [expandedClusterIds, setExpandedClusterIds] = useState<string[]>([]);
   const hasDraggedRef = useRef(false);
   const pointerStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const hasMovedSignificantRef = useRef(false);
+
+  const CLUSTER_DISTANCE_THRESHOLD = 10; // percentage distance threshold (0-100 scale)
+
+  // Group nearby pins into clusters using single-linkage proximity
+  const clusters = React.useMemo(() => {
+    const indexedTags = tags.map((tag, idx) => {
+      const currentX = dragLiveCoords && dragLiveCoords.id === tag.id ? dragLiveCoords.x : tag.x;
+      const currentY = dragLiveCoords && dragLiveCoords.id === tag.id ? dragLiveCoords.y : tag.y;
+      return { tag, idx, currentX, currentY };
+    });
+
+    const visited = new Set<number>();
+    const result: Array<{
+      id: string;
+      items: typeof indexedTags;
+      centerX: number;
+      centerY: number;
+    }> = [];
+
+    for (let i = 0; i < indexedTags.length; i++) {
+      if (visited.has(i)) continue;
+
+      // Do not cluster a pin while it is actively being dragged
+      if (indexedTags[i].tag.id === draggingTagId) {
+        visited.add(i);
+        result.push({
+          id: `single-${indexedTags[i].tag.id}`,
+          items: [indexedTags[i]],
+          centerX: indexedTags[i].currentX,
+          centerY: indexedTags[i].currentY,
+        });
+        continue;
+      }
+
+      const group: typeof indexedTags = [];
+      const queue: number[] = [i];
+      visited.add(i);
+
+      while (queue.length > 0) {
+        const currIdx = queue.shift()!;
+        const curr = indexedTags[currIdx];
+        group.push(curr);
+
+        for (let j = 0; j < indexedTags.length; j++) {
+          if (visited.has(j)) continue;
+          if (indexedTags[j].tag.id === draggingTagId) continue;
+
+          const other = indexedTags[j];
+          const dist = Math.hypot(curr.currentX - other.currentX, curr.currentY - other.currentY);
+          if (dist <= CLUSTER_DISTANCE_THRESHOLD) {
+            visited.add(j);
+            queue.push(j);
+          }
+        }
+      }
+
+      const sumX = group.reduce((acc, item) => acc + item.currentX, 0);
+      const sumY = group.reduce((acc, item) => acc + item.currentY, 0);
+      const centerX = Math.round((sumX / group.length) * 10) / 10;
+      const centerY = Math.round((sumY / group.length) * 10) / 10;
+      const clusterId = `cluster-${group.map((g) => g.tag.id).sort().join('_')}`;
+
+      result.push({
+        id: clusterId,
+        items: group,
+        centerX,
+        centerY,
+      });
+    }
+
+    return result;
+  }, [tags, dragLiveCoords, draggingTagId]);
+
+  const getCategoryIcon = (
+    category: ImageTag['category'],
+    className: string = 'w-3 h-3 shrink-0'
+  ) => {
+    switch (category) {
+      case 'Sprekk':
+        return <ShieldAlert className={className} />;
+      case 'Fukt':
+        return <Droplets className={className} />;
+      case 'Delaminering':
+        return <Layers className={className} />;
+      case 'Misfarging':
+        return <AlertTriangle className={className} />;
+      case 'Generelt':
+      default:
+        return <Target className={className} />;
+    }
+  };
 
   const calculatePercentage = (clientX: number, clientY: number) => {
     if (!containerRef.current) return null;
@@ -121,7 +219,7 @@ const TaggedImageOverlay: React.FC<{
 
   const handlePointerDownOnPin = (e: React.PointerEvent<HTMLDivElement>, tag: ImageTag) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    if ((e.target as HTMLElement).closest('button')) return;
+    if ((e.target as HTMLElement).closest('button, input, textarea, form, .pin-context-menu')) return;
 
     e.stopPropagation();
     pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
@@ -218,6 +316,11 @@ const TaggedImageOverlay: React.FC<{
       hasDraggedRef.current = false;
       return;
     }
+    if (contextMenuTagId) {
+      setContextMenuTagId(null);
+      return;
+    }
+    setClickedTagId(null);
     onImageClick(e);
   };
 
@@ -239,96 +342,503 @@ const TaggedImageOverlay: React.FC<{
       {/* Guide hint badge */}
       <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-slate-900/85 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide pointer-events-none opacity-80 group-hover/tagcanvas:opacity-100 transition-opacity flex items-center gap-1 shadow-md z-30">
         <Target className="w-3 h-3 text-amber-400 animate-pulse" />
-        <span>Klikk for merkelapp • Dra markør for å flytte</span>
+        <span>Klikk for merkelapp • Dra for å flytte • Klikk klynge for å utvide</span>
       </div>
 
-      {/* Numbered Tag Pins */}
-      {tags.map((tag, idx) => {
-        const isDraggingThis = draggingTagId === tag.id;
-        const currentX = (dragLiveCoords && dragLiveCoords.id === tag.id) ? dragLiveCoords.x : tag.x;
-        const currentY = (dragLiveCoords && dragLiveCoords.id === tag.id) ? dragLiveCoords.y : tag.y;
+      {/* Numbered Tag Pins & Merged Pin Clusters */}
+      <AnimatePresence>
+        {clusters.flatMap((cluster) => {
+          const isMultiCluster = cluster.items.length > 1;
+          const isClusterExpanded =
+            !isMultiCluster ||
+            expandedClusterIds.includes(cluster.id) ||
+            cluster.items.some(
+              (item) =>
+                item.tag.id === draggingTagId ||
+                item.tag.id === contextMenuTagId ||
+                item.tag.id === clickedTagId ||
+                item.tag.id === highlightedTagId
+            );
 
-        return (
-          <div
-            key={tag.id}
-            draggable={true}
-            onDragStart={(e) => handleDragStart(e, tag)}
-            onDragEnd={handleDragEnd}
-            onPointerDown={(e) => handlePointerDownOnPin(e, tag)}
-            style={{ left: `${currentX}%`, top: `${currentY}%` }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 group/pin animate-pin-entry select-none touch-none cursor-grab active:cursor-grabbing ${
-              isDraggingThis ? 'z-50 is-dragging scale-125' : 'z-40'
-            } pin-category-${
-              tag.category === 'Sprekk' ? 'red' :
-              tag.category === 'Fukt' ? 'blue' :
-              tag.category === 'Delaminering' ? 'orange' :
-              tag.category === 'Misfarging' ? 'amber' : 'emerald'
-            } ${tag.isAiSuggested ? 'pin-ai-suggested' : ''}`}
-            onClick={(e) => e.stopPropagation()}
-            title="Dra og slipp for å flytte merkelapp"
-          >
-            {/* Live drag coordinates readout badge */}
-            {isDraggingThis && (
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-950/95 text-amber-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xl whitespace-nowrap border border-amber-400/60 pointer-events-none flex items-center gap-1 z-50">
-                <Move className="w-2.5 h-2.5" />
-                <span>{currentX}%, {currentY}%</span>
-              </div>
-            )}
+          // Render single merged cluster indicator when multiple pins are close and not expanded
+          if (isMultiCluster && !isClusterExpanded) {
+            const hasCritical = cluster.items.some((i) => i.tag.severity === 'Kritisk' || i.tag.category === 'Sprekk');
+            const hasAi = cluster.items.some((i) => i.tag.isAiSuggested);
+            const sortedIndices = cluster.items.map((i) => i.idx + 1).sort((a, b) => a - b);
 
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 ${
-              tag.isAiSuggested ? 'border-amber-300 ring-2 ring-purple-500/50' : 'border-white'
-            } transition-transform transform ${isDraggingThis ? 'scale-125 shadow-2xl ring-4 ring-white/60' : 'group-hover/pin:scale-125'} ${
-              tag.category === 'Sprekk' ? 'bg-red-600' :
-              tag.category === 'Fukt' ? 'bg-blue-600' :
-              tag.category === 'Delaminering' ? 'bg-orange-600' :
-              tag.category === 'Misfarging' ? 'bg-amber-600' : 'bg-emerald-600'
-            }`}>
-              {idx + 1}
-            </div>
+            return [
+              <motion.div
+                key={cluster.id}
+                initial={{ opacity: 0, scale: 0.3 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0, transition: { duration: 0.2, ease: 'easeIn' } }}
+                transition={{ duration: 0.26, ease: [0.34, 1.56, 0.64, 1] }}
+                style={{ left: `${cluster.centerX}%`, top: `${cluster.centerY}%` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedClusterIds((prev) =>
+                    prev.includes(cluster.id) ? prev : [...prev, cluster.id]
+                  );
+                }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 z-45 group/cluster cursor-pointer select-none"
+                title={`Klynge med ${cluster.items.length} markører – klikk for å utvide`}
+              >
+                {/* Pulsing outer halo */}
+                <div
+                  className={`absolute -inset-1.5 rounded-full animate-ping opacity-35 pointer-events-none ${
+                    hasCritical ? 'bg-red-500' : 'bg-amber-400'
+                  }`}
+                />
 
-            {/* Tooltip on pin hover (hidden during active drag) */}
-            {!isDraggingThis && (
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-56 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
-                <div className="flex items-center justify-between font-bold border-b border-slate-700 pb-1 text-[10px] uppercase text-slate-300">
-                  <span className="flex items-center gap-1">
-                    <Tag className="w-3 h-3 text-amber-400" /> #{idx + 1} {tag.category}
-                    {tag.isAiSuggested && (
-                      <span className="text-[8px] bg-purple-600 text-purple-100 px-1 py-0.2 rounded font-bold ml-1">
-                        ✨ AI
-                      </span>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveTag(tag.id);
-                    }}
-                    className="text-red-400 hover:text-red-300 text-[10px] font-bold cursor-pointer"
-                  >
-                    Slett
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-100 font-medium mt-1">{tag.label}</p>
-                <div className="text-[9px] text-slate-400 mt-1 flex justify-between items-center">
-                  <span className="flex items-center gap-1 font-mono text-amber-300/90">
-                    <Move className="w-2.5 h-2.5" /> Dra for å flytte ({tag.x}%, {tag.y}%)
-                  </span>
-                  {tag.severity && (
-                    <span className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded ${
-                      tag.severity === 'Kritisk' ? 'bg-red-900/80 text-red-200' :
-                      tag.severity === 'Moderat' ? 'bg-amber-900/80 text-amber-200' :
-                      'bg-blue-900/80 text-blue-200'
-                    }`}>
-                      {tag.severity}
+                {/* Main cluster badge */}
+                <div
+                  className={`relative w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-xs text-white shadow-xl border-2 transition-transform duration-200 group-hover/cluster:scale-115 ${
+                    hasCritical
+                      ? 'bg-gradient-to-br from-red-600 to-amber-600 border-white ring-4 ring-red-500/40'
+                      : 'bg-gradient-to-br from-indigo-600 to-slate-800 border-amber-300 ring-4 ring-amber-400/35'
+                  }`}
+                >
+                  <span>{cluster.items.length}</span>
+                  {hasAi && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-purple-600 border border-white flex items-center justify-center text-[7px]">
+                      ✨
                     </span>
                   )}
                 </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+
+                {/* Compact label below cluster */}
+                <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-950/90 backdrop-blur-xs text-amber-300 text-[9px] font-bold leading-tight whitespace-nowrap shadow-md border border-amber-400/40">
+                  <Layers className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                  <span>
+                    {cluster.items.length} markører (#{sortedIndices.join(', #')})
+                  </span>
+                </div>
+
+                {/* Hover tooltip previewing clustered pins */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover/cluster:block z-50 w-60 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-2xl text-xs backdrop-blur-md border border-amber-400/50 pointer-events-auto">
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-1 mb-1.5 text-[10px] font-bold uppercase text-amber-300">
+                    <span className="flex items-center gap-1">
+                      <Layers className="w-3 h-3" /> Klynge ({cluster.items.length} markører)
+                    </span>
+                    <span className="text-[9px] text-slate-400">Klikk for å utvide</span>
+                  </div>
+                  <div className="space-y-1 max-h-32 overflow-y-auto pr-0.5">
+                    {cluster.items.map(({ tag: memberTag, idx: memberIdx }) => (
+                      <div
+                        key={memberTag.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedClusterIds((prev) =>
+                            prev.includes(cluster.id) ? prev : [...prev, cluster.id]
+                          );
+                          setClickedTagId(memberTag.id);
+                        }}
+                        className="flex items-center justify-between gap-1.5 text-[10px] bg-slate-800/90 hover:bg-slate-700/90 px-2 py-1 rounded-md cursor-pointer transition-colors"
+                      >
+                        <span className="flex items-center gap-1 font-semibold truncate">
+                          {getCategoryIcon(
+                            memberTag.category,
+                            `w-2.5 h-2.5 shrink-0 ${
+                              memberTag.category === 'Sprekk'
+                                ? 'text-red-400'
+                                : memberTag.category === 'Fukt'
+                                ? 'text-blue-400'
+                                : memberTag.category === 'Delaminering'
+                                ? 'text-orange-400'
+                                : memberTag.category === 'Misfarging'
+                                ? 'text-amber-400'
+                                : 'text-emerald-400'
+                            }`
+                          )}
+                          <span className="font-mono font-bold text-amber-300">#{memberIdx + 1}</span>
+                          <span className="text-slate-200 truncate">{memberTag.label || memberTag.category}</span>
+                        </span>
+                        <span className="text-[9px] text-slate-400 shrink-0">{memberTag.category}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            ];
+          }
+
+          // Render individual pins (with radial spiderfy offset when part of an expanded multi-pin cluster)
+          const totalInCluster = cluster.items.length;
+          const spiderfyRadius = isMultiCluster ? Math.min(9, 5.5 + totalInCluster * 0.6) : 0;
+
+          const pinElements = cluster.items.map(({ tag, idx, currentX, currentY }, memberPosIdx) => {
+            const isDraggingThis = draggingTagId === tag.id;
+            const isClickedThis = clickedTagId === tag.id;
+            const isContextOpenThis = contextMenuTagId === tag.id;
+            const isLabelHoveredThis = hoveredLabelTagId === tag.id || highlightedTagId === tag.id;
+            const isHighlightedThis = isClickedThis || isLabelHoveredThis || isContextOpenThis;
+
+            // Calculate radial fan-out position when expanded from a tight cluster (unless dragging)
+            let displayX = currentX;
+            let displayY = currentY;
+            if (isMultiCluster && !isDraggingThis) {
+              const angle = (2 * Math.PI * memberPosIdx) / totalInCluster - Math.PI / 2;
+              displayX = Math.max(4, Math.min(96, Math.round((cluster.centerX + Math.cos(angle) * spiderfyRadius) * 10) / 10));
+              displayY = Math.max(6, Math.min(94, Math.round((cluster.centerY + Math.sin(angle) * spiderfyRadius) * 10) / 10));
+            }
+
+            return (
+              <motion.div
+                key={tag.id}
+                initial={{ opacity: 0, scale: 0.2 }}
+                animate={{
+                  opacity: 1,
+                  scale: isDraggingThis ? 1.25 : isHighlightedThis ? 1.22 : 1
+                }}
+                exit={{
+                  opacity: 0,
+                  scale: 0,
+                  transition: { duration: 0.22, ease: 'easeIn' }
+                }}
+                transition={{ duration: 0.28, ease: [0.34, 1.56, 0.64, 1] }}
+                tabIndex={0}
+                draggable={!isContextOpenThis}
+                onDragStart={(e: any) => {
+                  if (e?.dataTransfer) {
+                    handleDragStart(e, tag);
+                  }
+                }}
+                onDragEnd={() => handleDragEnd()}
+                onPointerDown={(e) => handlePointerDownOnPin(e, tag)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenuTagId(tag.id);
+                  setNoteDraft(tag.note ?? tag.label ?? '');
+                }}
+                style={{ left: `${displayX}%`, top: `${displayY}%` }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 group/pin animate-pin-entry select-none touch-none cursor-grab active:cursor-grabbing ${
+                  isDraggingThis ? 'z-50 is-dragging scale-125' : isHighlightedThis ? 'z-50' : 'z-40'
+                } ${isHighlightedThis ? 'is-highlighted' : ''} ${isLabelHoveredThis ? 'is-label-hovered' : ''} pin-category-${
+                  tag.category === 'Sprekk' ? 'red' :
+                  tag.category === 'Fukt' ? 'blue' :
+                  tag.category === 'Delaminering' ? 'orange' :
+                  tag.category === 'Misfarging' ? 'amber' : 'emerald'
+                } ${tag.isAiSuggested ? 'pin-ai-suggested' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!hasMovedSignificantRef.current) {
+                    setClickedTagId((prev) => (prev === tag.id ? null : tag.id));
+                  }
+                }}
+                title="Klikk for å fremheve, høyreklikk for hurtigmeny, eller dra for å flytte"
+              >
+                {/* Live drag coordinates readout badge */}
+                {isDraggingThis && (
+                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-950/95 text-amber-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xl whitespace-nowrap border border-amber-400/60 pointer-events-none flex items-center gap-1 z-50">
+                    <Move className="w-2.5 h-2.5" />
+                    <span>{currentX}%, {currentY}%</span>
+                  </div>
+                )}
+
+                <div className={`pin-badge w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 ${
+                  tag.isAiSuggested ? 'border-amber-300 ring-2 ring-purple-500/50' : 'border-white'
+                } transition-all duration-300 transform ${
+                  isDraggingThis
+                    ? 'scale-125 shadow-2xl ring-4 ring-white/60'
+                    : isHighlightedThis
+                    ? 'scale-125 shadow-2xl ring-4 ring-white/80'
+                    : 'group-hover/pin:scale-125'
+                } ${
+                  tag.category === 'Sprekk' ? 'bg-red-600' :
+                  tag.category === 'Fukt' ? 'bg-blue-600' :
+                  tag.category === 'Delaminering' ? 'bg-orange-600' :
+                  tag.category === 'Misfarging' ? 'bg-amber-600' : 'bg-emerald-600'
+                }`}>
+                  {idx + 1}
+                </div>
+
+                {/* Always-visible unobtrusive text label beneath the pin showing sequence number and category */}
+                <div
+                  onMouseEnter={() => setHoveredLabelTagId(tag.id)}
+                  onMouseLeave={() => setHoveredLabelTagId((prev) => (prev === tag.id ? null : prev))}
+                  className="pin-label absolute top-full mt-1 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-xs text-slate-50 text-[9px] font-semibold leading-tight whitespace-nowrap pointer-events-auto cursor-pointer select-none shadow-md border border-white/25"
+                >
+                  <span className="pin-label-number font-mono font-extrabold">#{idx + 1}</span>
+                  {getCategoryIcon(
+                    tag.category,
+                    `w-2.5 h-2.5 shrink-0 ${
+                      tag.category === 'Sprekk' ? 'text-red-400' :
+                      tag.category === 'Fukt' ? 'text-blue-400' :
+                      tag.category === 'Delaminering' ? 'text-orange-400' :
+                      tag.category === 'Misfarging' ? 'text-amber-400' : 'text-emerald-400'
+                    }`
+                  )}
+                  <span className="pin-label-category">{tag.category}</span>
+                </div>
+
+                {/* Right-click context menu for quick category, severity, and note updates */}
+                {isContextOpenThis && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onContextMenu={(e) => e.stopPropagation()}
+                    className={`pin-context-menu absolute z-50 w-64 bg-slate-900/98 text-white p-3 rounded-xl shadow-2xl text-xs backdrop-blur-md pointer-events-auto border-2 transition-colors duration-200 cursor-default ${
+                      tag.category === 'Sprekk'
+                        ? 'border-red-500 ring-1 ring-red-400/30'
+                        : tag.category === 'Fukt'
+                        ? 'border-blue-500 ring-1 ring-blue-400/30'
+                        : tag.category === 'Delaminering'
+                        ? 'border-orange-500 ring-1 ring-orange-400/30'
+                        : tag.category === 'Misfarging'
+                        ? 'border-amber-500 ring-1 ring-amber-400/30'
+                        : 'border-emerald-500 ring-1 ring-emerald-400/30'
+                    } ${
+                      displayY > 55 ? 'bottom-full mb-2' : 'top-full mt-6'
+                    } ${
+                      displayX < 25 ? 'left-0' : displayX > 75 ? 'right-0' : 'left-1/2 -translate-x-1/2'
+                    }`}
+                  >
+                    <div className={`flex items-center justify-between border-b pb-1.5 mb-2 transition-colors duration-200 ${
+                      tag.category === 'Sprekk'
+                        ? 'border-red-500/40'
+                        : tag.category === 'Fukt'
+                        ? 'border-blue-500/40'
+                        : tag.category === 'Delaminering'
+                        ? 'border-orange-500/40'
+                        : tag.category === 'Misfarging'
+                        ? 'border-amber-500/40'
+                        : 'border-emerald-500/40'
+                    }`}>
+                      <span className={`font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 transition-colors duration-200 ${
+                        tag.category === 'Sprekk'
+                          ? 'text-red-300'
+                          : tag.category === 'Fukt'
+                          ? 'text-blue-300'
+                          : tag.category === 'Delaminering'
+                          ? 'text-orange-300'
+                          : tag.category === 'Misfarging'
+                          ? 'text-amber-300'
+                          : 'text-emerald-300'
+                      }`}>
+                        {getCategoryIcon(tag.category, 'w-3 h-3 shrink-0')}
+                        <span>#{idx + 1} {tag.category}</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContextMenuTagId(null);
+                            onRemoveTag(tag.id);
+                          }}
+                          className="text-red-400 hover:text-red-300 text-[10px] font-bold cursor-pointer"
+                        >
+                          Slett
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setContextMenuTagId(null)}
+                          className="text-slate-400 hover:text-white text-xs font-bold cursor-pointer px-1"
+                          title="Lukk meny"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Category Selector */}
+                    <div className="mb-2">
+                      <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        Kategori
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {(['Sprekk', 'Fukt', 'Delaminering', 'Misfarging', 'Generelt'] as const).map((cat) => {
+                          const isSelected = tag.category === cat;
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => onUpdateTag?.(tag.id, { category: cat })}
+                              className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer border ${
+                                isSelected
+                                  ? cat === 'Sprekk'
+                                    ? 'bg-red-600 text-white border-red-400 shadow-xs'
+                                    : cat === 'Fukt'
+                                    ? 'bg-blue-600 text-white border-blue-400 shadow-xs'
+                                    : cat === 'Delaminering'
+                                    ? 'bg-orange-600 text-white border-orange-400 shadow-xs'
+                                    : cat === 'Misfarging'
+                                    ? 'bg-amber-600 text-white border-amber-400 shadow-xs'
+                                    : 'bg-emerald-600 text-white border-emerald-400 shadow-xs'
+                                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                              }`}
+                            >
+                              {getCategoryIcon(
+                                cat,
+                                `w-2.5 h-2.5 shrink-0 ${
+                                  isSelected
+                                    ? 'text-white'
+                                    : cat === 'Sprekk'
+                                    ? 'text-red-400'
+                                    : cat === 'Fukt'
+                                    ? 'text-blue-400'
+                                    : cat === 'Delaminering'
+                                    ? 'text-orange-400'
+                                    : cat === 'Misfarging'
+                                    ? 'text-amber-400'
+                                    : 'text-emerald-400'
+                                }`
+                              )}
+                              <span>{cat}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Quick Severity Selector */}
+                    <div className="mb-2.5">
+                      <span className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        Alvorlighetsgrad
+                      </span>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['Lav', 'Moderat', 'Kritisk'] as const).map((sev) => {
+                          const isSelected = tag.severity === sev;
+                          return (
+                            <button
+                              key={sev}
+                              type="button"
+                              onClick={() => onUpdateTag?.(tag.id, { severity: sev })}
+                              className={`text-[10px] py-1 px-2 rounded-md font-bold uppercase transition-all cursor-pointer border text-center ${
+                                isSelected
+                                  ? sev === 'Kritisk'
+                                    ? 'bg-red-700 text-white border-red-400 shadow-xs'
+                                    : sev === 'Moderat'
+                                    ? 'bg-amber-600 text-white border-amber-300 shadow-xs'
+                                    : 'bg-blue-700 text-white border-blue-400 shadow-xs'
+                                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                              }`}
+                            >
+                              {sev}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Direct Text Note Input */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const trimmed = noteDraft.trim();
+                        if (trimmed) {
+                          onUpdateTag?.(tag.id, { label: trimmed, note: trimmed });
+                        }
+                        setContextMenuTagId(null);
+                      }}
+                      className="space-y-1.5"
+                    >
+                      <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                        Notat / Observasjon
+                      </label>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={noteDraft}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNoteDraft(val);
+                            onUpdateTag?.(tag.id, { label: val, note: val });
+                          }}
+                          placeholder="Skriv notat for markør..."
+                          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-[11px] text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                        />
+                        <button
+                          type="submit"
+                          className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] px-2.5 py-1 rounded-lg cursor-pointer shrink-0 transition-colors"
+                        >
+                          Lagre
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Tooltip on pin hover (hidden during active drag or when context menu is open) */}
+                {!isDraggingThis && !isContextOpenThis && (
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/pin:block z-50 w-56 bg-slate-900/95 text-white p-2.5 rounded-xl shadow-xl text-xs backdrop-blur-xs pointer-events-auto border border-slate-700">
+                    <div className="flex items-center justify-between font-bold border-b border-slate-700 pb-1 text-[10px] uppercase text-slate-300">
+                      <span className="flex items-center gap-1">
+                        {getCategoryIcon(
+                          tag.category,
+                          `w-3 h-3 shrink-0 ${
+                            tag.category === 'Sprekk' ? 'text-red-400' :
+                            tag.category === 'Fukt' ? 'text-blue-400' :
+                            tag.category === 'Delaminering' ? 'text-orange-400' :
+                            tag.category === 'Misfarging' ? 'text-amber-400' : 'text-emerald-400'
+                          }`
+                        )}
+                        <span>#{idx + 1} {tag.category}</span>
+                        {tag.isAiSuggested && (
+                          <span className="text-[8px] bg-purple-600 text-purple-100 px-1 py-0.2 rounded font-bold ml-1">
+                            ✨ AI
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveTag(tag.id);
+                        }}
+                        className="text-red-400 hover:text-red-300 text-[10px] font-bold cursor-pointer"
+                      >
+                        Slett
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-100 font-medium mt-1">{tag.label}</p>
+                    <div className="text-[9px] text-slate-400 mt-1 flex justify-between items-center">
+                      <span className="flex items-center gap-1 font-mono text-amber-300/90">
+                        <Move className="w-2.5 h-2.5" /> Dra for å flytte ({tag.x}%, {tag.y}%)
+                      </span>
+                      {tag.severity && (
+                        <span className={`text-[8px] font-bold uppercase px-1 py-0.2 rounded ${
+                          tag.severity === 'Kritisk' ? 'bg-red-900/80 text-red-200' :
+                          tag.severity === 'Moderat' ? 'bg-amber-900/80 text-amber-200' :
+                          'bg-blue-900/80 text-blue-200'
+                        }`}>
+                          {tag.severity}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            );
+          });
+
+          // If this is an expanded multi-pin cluster, also include a collapse hub button at the cluster center
+          if (isMultiCluster && isClusterExpanded) {
+            pinElements.push(
+              <motion.div
+                key={`${cluster.id}-hub`}
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+                style={{ left: `${cluster.centerX}%`, top: `${cluster.centerY}%` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedClusterIds((prev) => prev.filter((id) => id !== cluster.id));
+                  setClickedTagId(null);
+                  setContextMenuTagId(null);
+                }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 z-35 bg-slate-950/90 hover:bg-slate-900 text-amber-300 border border-amber-400/60 rounded-full px-1.5 py-0.5 text-[8px] font-bold shadow-md cursor-pointer flex items-center gap-0.5 whitespace-nowrap"
+                title="Klikk for å samle klyngen igjen"
+              >
+                <Layers className="w-2.5 h-2.5 text-amber-400" />
+                <span>Samle ({cluster.items.length})</span>
+              </motion.div>
+            );
+          }
+
+          return pinElements;
+        })}
+      </AnimatePresence>
 
       {/* Pending click crosshair marker */}
       {pendingTagPos && (
@@ -1270,6 +1780,10 @@ export default function App() {
     const clampedX = Math.max(0, Math.min(100, Math.round(x)));
     const clampedY = Math.max(0, Math.min(100, Math.round(y)));
     setImageTags(prev => prev.map(t => t.id === id ? { ...t, x: clampedX, y: clampedY } : t));
+  };
+
+  const handleUpdateTag = (id: string, updates: Partial<ImageTag>) => {
+    setImageTags(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   };
 
   const handleSaveCapturedPhoto = async (e: React.FormEvent) => {
@@ -3916,6 +4430,8 @@ export default function App() {
                                         onImageClick={handleImageClickToTag}
                                         onRemoveTag={handleRemoveTag}
                                         onUpdateTagPosition={handleUpdateTagPosition}
+                                        onUpdateTag={handleUpdateTag}
+                                        highlightedTagId={activeHoverTagId}
                                       />
                                     ) : (
                                       <div className="w-full h-full bg-stone-800/90 flex flex-col items-center justify-center text-center p-6 text-white">
@@ -4012,6 +4528,8 @@ export default function App() {
                                         onImageClick={handleImageClickToTag}
                                         onRemoveTag={handleRemoveTag}
                                         onUpdateTagPosition={handleUpdateTagPosition}
+                                        onUpdateTag={handleUpdateTag}
+                                        highlightedTagId={activeHoverTagId}
                                       />
                                     ) : (
                                       <div className="text-center p-4 text-xs text-gray-400">
@@ -4236,7 +4754,12 @@ export default function App() {
                                     {imageTags.map((tag, idx) => (
                                       <div
                                         key={tag.id}
-                                        className="bg-white border border-slate-200 hover:border-purple-300 rounded-xl p-2 flex items-center gap-2.5 shadow-2xs group transition-all"
+                                        onMouseEnter={() => setActiveHoverTagId(tag.id)}
+                                        onMouseLeave={() => setActiveHoverTagId(null)}
+                                        onClick={() => setActiveHoverTagId((prev) => (prev === tag.id ? null : tag.id))}
+                                        className={`bg-white border ${
+                                          activeHoverTagId === tag.id ? 'border-purple-500 ring-2 ring-purple-200' : 'border-slate-200 hover:border-purple-300'
+                                        } rounded-xl p-2 flex items-center gap-2.5 shadow-2xs group transition-all cursor-pointer`}
                                       >
                                         <span className={`w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center shrink-0 ${
                                           tag.category === 'Sprekk' ? 'bg-red-600' :

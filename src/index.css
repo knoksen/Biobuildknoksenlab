@@ -26,34 +26,88 @@
 @keyframes tag-pin-entry {
   0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.2);
+    scale: 0.2;
   }
   65% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.18);
+    scale: 1.18;
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    scale: 1;
   }
 }
 
 .group\/pin,
 .animate-pin-entry {
-  animation: tag-pin-entry 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  animation: tag-pin-entry 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
   transform-origin: center center;
-  will-change: transform, opacity;
+  will-change: transform, opacity, box-shadow, scale;
 }
 
 .group\/pin {
+  --pin-glow-color: rgba(239, 68, 68, 0.78);
+  translate: -50% -50%;
   cursor: grab;
   user-select: none;
   touch-action: none;
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    scale 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.group\/pin .pin-badge {
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.28s ease;
 }
 
 .group\/pin:active,
 .group\/pin.is-dragging {
   cursor: grabbing !important;
+}
+
+/* Subtle highlight animation: enlarge pin and pulse shadow intensity on pin click or label hover */
+@keyframes pin-highlight-shadow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.88),
+      0 0 12px 3px var(--pin-glow-color),
+      0 6px 14px rgba(15, 23, 42, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(255, 255, 255, 0.96),
+      0 0 22px 8px var(--pin-glow-color),
+      0 10px 22px rgba(15, 23, 42, 0.75);
+  }
+}
+
+.group\/pin:active,
+.group\/pin:focus-visible,
+.group\/pin.is-highlighted,
+.group\/pin.is-label-hovered,
+.group\/pin:has(.pin-label:hover) {
+  scale: 1.22;
+  filter: drop-shadow(0 0 8px var(--pin-glow-color));
+  z-index: 50;
+}
+
+.group\/pin:active .pin-badge,
+.group\/pin:focus-visible .pin-badge,
+.group\/pin.is-highlighted .pin-badge,
+.group\/pin.is-label-hovered .pin-badge,
+.group\/pin:has(.pin-label:hover) .pin-badge {
+  transform: scale(1.25);
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.92),
+    0 0 18px 6px var(--pin-glow-color),
+    0 8px 18px rgba(15, 23, 42, 0.65);
+  animation: pin-highlight-shadow-pulse 1.3s ease-in-out infinite;
 }
 
 /* Slow pulsing ring effect to highlight active pins without hover */
@@ -94,36 +148,194 @@
   animation-delay: 1.4s;
 }
 
-/* Defect category and AI-suggested tint adjustments for the pulsing ring */
+/* Defect category and AI-suggested tint adjustments for the pulsing ring and highlight glow */
+.group\/pin.pin-category-red {
+  --pin-glow-color: rgba(239, 68, 68, 0.82);
+}
 .group\/pin.pin-category-red::before,
 .group\/pin.pin-category-red::after {
   border-color: rgba(239, 68, 68, 0.85);
 }
 
+.group\/pin.pin-category-blue {
+  --pin-glow-color: rgba(59, 130, 246, 0.82);
+}
 .group\/pin.pin-category-blue::before,
 .group\/pin.pin-category-blue::after {
   border-color: rgba(59, 130, 246, 0.85);
 }
 
+.group\/pin.pin-category-orange {
+  --pin-glow-color: rgba(249, 115, 22, 0.82);
+}
 .group\/pin.pin-category-orange::before,
 .group\/pin.pin-category-orange::after {
   border-color: rgba(249, 115, 22, 0.85);
 }
 
+.group\/pin.pin-category-amber {
+  --pin-glow-color: rgba(245, 158, 11, 0.85);
+}
 .group\/pin.pin-category-amber::before,
 .group\/pin.pin-category-amber::after {
   border-color: rgba(245, 158, 11, 0.85);
 }
 
+.group\/pin.pin-category-emerald {
+  --pin-glow-color: rgba(16, 185, 129, 0.82);
+}
 .group\/pin.pin-category-emerald::before,
 .group\/pin.pin-category-emerald::after {
   border-color: rgba(16, 185, 129, 0.85);
 }
 
+.group\/pin.pin-ai-suggested {
+  --pin-glow-color: rgba(168, 85, 247, 0.88);
+}
 .group\/pin.pin-ai-suggested::before,
 .group\/pin.pin-ai-suggested::after {
   border-color: rgba(168, 85, 247, 0.95);
   box-shadow: 0 0 6px rgba(168, 85, 247, 0.6);
+}
+
+/* Always-visible unobtrusive text label beneath the .group/pin element */
+.group\/pin .pin-label {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1.5px 5.5px;
+  border-radius: 9999px;
+  background-color: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #f8fafc;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.92;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+  transition:
+    opacity 0.22s ease,
+    transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+  z-index: 45;
+}
+
+.group\/pin:hover .pin-label,
+.group\/pin:active .pin-label,
+.group\/pin.is-highlighted .pin-label,
+.group\/pin.is-label-hovered .pin-label,
+.group\/pin .pin-label:hover,
+.group\/pin.is-dragging .pin-label {
+  opacity: 1;
+  background-color: rgba(15, 23, 42, 0.95);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateX(-50%) translateY(1px) scale(1.05);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.75),
+    0 0 8px var(--pin-glow-color);
+}
+
+.group\/pin .pin-label-number {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.group\/pin .pin-label-category {
+  color: #f8fafc;
+  font-weight: 600;
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Subtle category-matched accents on the label sequence number & border */
+.group\/pin.pin-category-red .pin-label {
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.group\/pin.pin-category-red .pin-label-number {
+  color: #fca5a5;
+}
+
+.group\/pin.pin-category-blue .pin-label {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+.group\/pin.pin-category-blue .pin-label-number {
+  color: #93c5fd;
+}
+
+.group\/pin.pin-category-orange .pin-label {
+  border-color: rgba(251, 146, 60, 0.4);
+}
+.group\/pin.pin-category-orange .pin-label-number {
+  color: #fdba74;
+}
+
+.group\/pin.pin-category-amber .pin-label {
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.group\/pin.pin-category-amber .pin-label-number {
+  color: #fcd34d;
+}
+
+.group\/pin.pin-category-emerald .pin-label {
+  border-color: rgba(52, 211, 153, 0.4);
+}
+.group\/pin.pin-category-emerald .pin-label-number {
+  color: #6ee7b7;
+}
+
+.group\/pin.pin-ai-suggested .pin-label {
+  border-color: rgba(192, 132, 252, 0.55);
+}
+
+/* Dynamic category-based border coloring and glow for the .group/pin right-click context menu */
+.group\/pin .pin-context-menu {
+  border-width: 2px;
+  border-style: solid;
+  border-color: var(--pin-glow-color);
+  box-shadow:
+    0 20px 35px -5px rgba(0, 0, 0, 0.8),
+    0 0 14px -2px var(--pin-glow-color);
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.group\/pin.pin-category-red .pin-context-menu {
+  border-color: rgba(239, 68, 68, 0.9);
+}
+
+.group\/pin.pin-category-blue .pin-context-menu {
+  border-color: rgba(59, 130, 246, 0.9);
+}
+
+.group\/pin.pin-category-orange .pin-context-menu {
+  border-color: rgba(249, 115, 22, 0.9);
+}
+
+.group\/pin.pin-category-amber .pin-context-menu {
+  border-color: rgba(245, 158, 11, 0.9);
+}
+
+.group\/pin.pin-category-emerald .pin-context-menu {
+  border-color: rgba(16, 185, 129, 0.9);
 }
 
 @media (prefers-reduced-motion: reduce) {

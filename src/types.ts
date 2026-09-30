@@ -120,6 +120,7 @@ export interface ImageTag {
   category: 'Sprekk' | 'Fukt' | 'Delaminering' | 'Misfarging' | 'Generelt';
   isAiSuggested?: boolean;
   severity?: string;
+  note?: string;
 }
 
 export interface UserSpace {
