@@ -1,7 +1,7 @@
 {
-  "name": "react-example",
+  "name": "biobuild-evidence-lab",
   "private": true,
-  "version": "0.0.0",
+  "version": "3.5.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -9,6 +9,8 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "test": "tsx scripts/test-suite.ts",
+    "release:github": "node scripts/create-github-release.js",
     "win:inst": "node scripts/win-installer.js",
     "win-inst": "node scripts/win-installer.js",
     "win:installer": "node scripts/win-installer.js",

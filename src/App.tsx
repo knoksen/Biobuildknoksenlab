@@ -74,6 +74,7 @@ import HistoricalTrendAnalysis from './components/HistoricalTrendAnalysis';
 import WeatherMoistureCorrelation from './components/WeatherMoistureCorrelation';
 import ExperimentNotesSection from './components/ExperimentNotesSection';
 import BatchImageAnalysisModal from './components/BatchImageAnalysisModal';
+import PresentationReleaseModal from './components/PresentationReleaseModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport, generateBulkMaterialsPDFReport } from './utils/pdfGenerator';
 import { downloadMaterialsCsv } from './utils/csvExporter';
@@ -1404,6 +1405,105 @@ export default function App() {
   // Material Table & CSV Export Modal State
   const [showMaterialTableModal, setShowMaterialTableModal] = useState(false);
   const [csvToastNotification, setCsvToastNotification] = useState<string | null>(null);
+
+  // Interactive Presentation, Badges, Testing & GitHub Release Modal State
+  const [showPresentationModal, setShowPresentationModal] = useState(false);
+  const [presentationSection, setPresentationSection] = useState<'presentation' | 'quickstart' | 'testing' | 'release'>('presentation');
+
+  const handleQuickStartAction = (
+    action:
+      | 'pin-clustering-demo'
+      | 'compare-materials'
+      | 'open-table-csv'
+      | 'open-unreal'
+      | 'open-userspaces'
+      | 'open-eierallokering'
+      | 'export-pdf'
+      | 'open-batch-ai'
+  ) => {
+    setShowPresentationModal(false);
+
+    if (action === 'pin-clustering-demo') {
+      setGlobalView('materials');
+      setActiveTab('tester');
+      if (!capturedImage) {
+        setCapturedImage('https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=900&auto=format&fit=crop&q=80');
+      }
+      setImageTags([
+        {
+          id: 'demo-cluster-1',
+          x: 34,
+          y: 42,
+          label: 'Mikrosprekk ved mycel-kjerne (Sone A)',
+          note: 'Mikrosprekk ved mycel-kjerne (Sone A)',
+          category: 'Sprekk',
+          severity: 'Kritisk',
+          isAiSuggested: true
+        },
+        {
+          id: 'demo-cluster-2',
+          x: 37,
+          y: 45,
+          label: 'Lokal fuktopphopning rundt sprekksone',
+          note: 'Lokal fuktopphopning rundt sprekksone',
+          category: 'Fukt',
+          severity: 'Moderat',
+          isAiSuggested: true
+        },
+        {
+          id: 'demo-cluster-3',
+          x: 32,
+          y: 46,
+          label: 'Begynnende delaminering i ytterlag',
+          note: 'Begynnende delaminering i ytterlag',
+          category: 'Delaminering',
+          severity: 'Moderat',
+          isAiSuggested: false
+        },
+        {
+          id: 'demo-single-4',
+          x: 72,
+          y: 30,
+          label: 'Overflate-misfarging etter UV-syklus',
+          note: 'Overflate-misfarging etter UV-syklus',
+          category: 'Misfarging',
+          severity: 'Lav',
+          isAiSuggested: true
+        },
+        {
+          id: 'demo-single-5',
+          x: 64,
+          y: 74,
+          label: 'Referansepunkt – intakt biokalk-matrise',
+          note: 'Referansepunkt – intakt biokalk-matrise',
+          category: 'Generelt',
+          severity: 'Lav',
+          isAiSuggested: false
+        }
+      ]);
+      setSuggestedDefectsFeedback({
+        count: 5,
+        summary: 'Hurtigstart-demo aktivert: 3 markører er samlet i en klynge ved (34%, 44%) og 2 enkeltmarkører er plassert. Klikk på klyngen for å utvide, eller høyreklikk en markør!',
+        type: 'success'
+      });
+    } else if (action === 'compare-materials') {
+      setCompareMaterialAId(selectedMaterialId);
+      setShowCompareModal(true);
+    } else if (action === 'open-table-csv') {
+      setShowMaterialTableModal(true);
+    } else if (action === 'open-unreal') {
+      setGlobalView('unreal');
+    } else if (action === 'open-userspaces') {
+      setGlobalView('userspaces');
+    } else if (action === 'open-eierallokering') {
+      setGlobalView('eierallokering');
+    } else if (action === 'export-pdf') {
+      const currentMat = materials.find((m) => m.id === selectedMaterialId) || materials[0];
+      if (currentMat) handleDownloadFullMaterialPdf(currentMat);
+    } else if (action === 'open-batch-ai') {
+      setShowBatchImageModal(true);
+    }
+  };
 
   const sanitizeImageSrc = (value: string | null): string | null => {
     if (!value) return null;
@@ -3387,6 +3487,105 @@ export default function App() {
             <Activity className="w-3 h-3 text-emerald-600 animate-pulse" />
             <span>Loop-Back: AKTIV</span>
           </div>
+        </div>
+      </div>
+
+      {/* ----------------- PRESENTATION, BADGES & QUICK-START RIBBON ----------------- */}
+      <div
+        id="quick-start-presentation-ribbon"
+        className="bg-gradient-to-r from-slate-900 via-[#2c2c24] to-slate-900 text-white px-4 md:px-8 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3"
+      >
+        {/* Left: Status & Release Badges */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setPresentationSection('release');
+              setShowPresentationModal(true);
+            }}
+            className="inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-emerald-500/40 cursor-pointer hover:opacity-90 transition-opacity"
+            title="Åpne GitHub Release v3.5.0 oversikt"
+          >
+            <span className="bg-slate-800 text-slate-200 px-2 py-0.5">Release</span>
+            <span className="bg-emerald-600 text-white px-2 py-0.5">v3.5.0-stable</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setPresentationSection('testing');
+              setShowPresentationModal(true);
+            }}
+            className="inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-blue-500/40 cursor-pointer hover:opacity-90 transition-opacity"
+            title="Kjør eller inspiser automatiske systemtester"
+          >
+            <span className="bg-slate-800 text-slate-200 px-2 py-0.5">Tests</span>
+            <span className="bg-blue-600 text-white px-2 py-0.5">6/6 Passing</span>
+          </button>
+
+          <span className="hidden xl:inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-amber-500/40">
+            <span className="bg-slate-800 text-slate-200 px-2 py-0.5">ISO</span>
+            <span className="bg-amber-600 text-slate-950 px-2 py-0.5">1182 • 12571</span>
+          </span>
+
+          <span className="hidden md:inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-purple-500/40">
+            <span className="bg-slate-800 text-slate-200 px-2 py-0.5">Vision AI</span>
+            <span className="bg-purple-700 text-white px-2 py-0.5">Pin Clustering v2</span>
+          </span>
+        </div>
+
+        {/* Right: Quick Start Buttons & Presentation Launcher */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300/90 font-bold hidden sm:inline">
+            Hurtigstart:
+          </span>
+
+          <button
+            type="button"
+            id="btn-quickstart-presentation"
+            onClick={() => {
+              setPresentationSection('presentation');
+              setShowPresentationModal(true);
+            }}
+            className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-bold px-3 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Presentasjon & Release</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-quickstart-pin-clustering"
+            onClick={() => handleQuickStartAction('pin-clustering-demo')}
+            className="bg-purple-700 hover:bg-purple-600 text-white border border-purple-400/40 text-[11px] font-semibold px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Start interaktiv demonstrasjon av markør-klynger (Pin Clustering) og høyreklikk-meny"
+          >
+            <Target className="w-3.5 h-3.5 text-amber-300" />
+            <span>Demo: Markør-klynger</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-quickstart-compare"
+            onClick={() => handleQuickStartAction('compare-materials')}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+          >
+            <Scale className="w-3 h-3 text-emerald-400" />
+            <span>Hurtig-sammenlign</span>
+          </button>
+
+          <button
+            type="button"
+            id="btn-quickstart-tests"
+            onClick={() => {
+              setPresentationSection('testing');
+              setShowPresentationModal(true);
+            }}
+            className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+          >
+            <ShieldCheck className="w-3 h-3 text-blue-400" />
+            <span>Systemtest & Badges</span>
+          </button>
         </div>
       </div>
 
@@ -7578,6 +7777,17 @@ export default function App() {
         activeMaterial={activeMaterial}
         availableMaterials={materials}
         onSaveToMaterialTests={handleSaveBatchTestsToMaterial}
+      />
+
+      {/* Interactive Presentation, Badges, Testing & GitHub Release Modal */}
+      <PresentationReleaseModal
+        isOpen={showPresentationModal}
+        onClose={() => setShowPresentationModal(false)}
+        materials={materials}
+        researchers={researchers}
+        userSpaces={userSpaces}
+        initialSection={presentationSection}
+        onQuickAction={handleQuickStartAction}
       />
 
       {/* Floating Toast Notification for CSV Export */}

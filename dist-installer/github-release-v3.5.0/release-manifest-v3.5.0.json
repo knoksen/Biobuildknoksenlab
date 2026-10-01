@@ -1,0 +1,27 @@
+{
+  "name": "biobuild-evidence-lab",
+  "version": "3.5.0",
+  "tag": "v3.5.0",
+  "title": "BioBuild Evidence Lab v3.5.0 — Alive Houses (GitHub Release)",
+  "releasedAt": "2026-09-30T13:23:36.590Z",
+  "status": "verified",
+  "checks": {
+    "typescript": "passed",
+    "unitTests": "6/6 passed",
+    "productionBuild": "passed"
+  },
+  "highlights": [
+    "Pin Clustering in TaggedImageOverlay with spiderfy radial expansion on click",
+    "Right-click context menu with dynamic category-colored borders and live note editing",
+    "Dynamic Lucide category icons (ShieldAlert, Droplets, Layers, AlertTriangle, Target)",
+    "Framer Motion AnimatePresence shrink exit animation on pin removal",
+    "Interactive GitHub Presentation Deck, Quick-Start buttons, Shields.io badges & CI/CD workflows"
+  ],
+  "assets": [
+    "README.md",
+    "PRESENTATION.md",
+    "RELEASE_NOTES.md",
+    "CHANGELOG.md",
+    ".github/workflows/release.yml"
+  ]
+}
