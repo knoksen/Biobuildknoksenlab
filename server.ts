@@ -317,8 +317,20 @@ async function urlToBase64(url: string): Promise<{ mimeType: string; data: strin
       return null;
     }
 
+    // Allow only direct image file paths to avoid attacker-controlled endpoint selection.
+    if (!/^\/[A-Za-z0-9\-._~/]*\.(?:png|jpe?g|webp|gif)$/i.test(normalizedPath)) {
+      console.warn('Blocked referenceImage URL with disallowed path format');
+      return null;
+    }
+
+    // Block query strings and fragments to prevent parameter-based SSRF pivots.
+    if (parsed.search || parsed.hash) {
+      console.warn('Blocked referenceImage URL with query/fragment');
+      return null;
+    }
+
     const trustedOrigin = parsed.origin;
-    const requestUrl = new URL(parsed.pathname + parsed.search, trustedOrigin).toString();
+    const requestUrl = new URL(normalizedPath, trustedOrigin).toString();
     const safe = await isSafeExternalHttpUrl(requestUrl);
     if (!safe) {
       console.warn('Blocked unsafe referenceImage URL');
