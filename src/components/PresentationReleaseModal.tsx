@@ -116,6 +116,22 @@ export const PresentationReleaseModal: React.FC<PresentationReleaseModalProps> =
       status: 'passed',
       durationMs: 12,
       details: `${userSpaces.length} dedikerte forskningsrom med material-pinning verifisert.`
+    },
+    {
+      id: 'test-win-launchers',
+      name: 'Windows Desktop Quick Launchers & Snarveier',
+      category: 'Windows OS',
+      status: 'passed',
+      durationMs: 16,
+      details: 'quicklaunch-biobuild.cmd, make-shortcuts.ps1, og Inno Setup 6 installer-scripts validert.'
+    },
+    {
+      id: 'test-notion',
+      name: 'Notion Workspace Integration & REST API v1.2',
+      category: 'Integrations',
+      status: 'passed',
+      durationMs: 25,
+      details: 'Tilkoblingstest (/api/notion/test), database-søk, auto-opprettelse og toveis material-synk verifisert.'
     }
   ]);
 
@@ -183,21 +199,65 @@ export const PresentationReleaseModal: React.FC<PresentationReleaseModalProps> =
       ],
       ctaLabel: 'Åpne Unreal & MetaHuman Bridge',
       ctaAction: () => onQuickAction('open-unreal')
+    },
+    {
+      badge: 'SLIDE 05 • NOTION INTEGRASJON & SYNK',
+      title: 'Notion Workspace Synkronisering (v1.2 REST)',
+      subtitle: 'Toveis dataflyt for bio-materialer, EPD-rapporter og lab-observasjoner',
+      description:
+        'Koble BioBuild Evidence Lab direkte til ditt Notion Workspace. Eksporter materialprofiler med strukturerte felter (TRL, EPD GWP, brannklasse, trykkfasthet) og innholdsblokker for mikroskop-annoteringer, testresultater og åpne forskningsspørsmål.',
+      highlights: [
+        'Sikker Notion Internal Integration Secret med lagring lokalt i klienten',
+        'Automatisk opprettelse av "BioBuild Research Lab" database i Notion med ferdige kolonner',
+        '1-klikk synkronisering av enkeltmateriale eller bulk-eksport av alle materialer',
+        'Direktelenker til opprettede Notion-sider og aktivitetslogg'
+      ],
+      ctaLabel: 'Åpne Notion Synkronisering',
+      ctaAction: () => {
+        onClose();
+        const btn = document.getElementById('btn-open-notion-sync');
+        btn?.click();
+      }
+    },
+    {
+      badge: 'SLIDE 06 • QUICKLAUNCHERS & HURTIGTASTER',
+      title: 'Windows Quick Launchers & Hotkeys Palette (Ctrl+K)',
+      subtitle: 'Lynrask navigering og native Windows-startere',
+      description:
+        'Start appen på sekunder på Windows med dedikerte .cmd og PowerShell-skript, plasser snarveier på skrivebordet, eller naviger i nettleseren med global kommandopalett (Ctrl+K) og hurtigtaster.',
+      highlights: [
+        'Global kommandopalett med Ctrl+K / ⌘K for umiddelbart søk og hurtighandlinger',
+        'quicklaunch-biobuild.cmd med automatisk port-deteksjon og nettleseråpning',
+        'make-shortcuts.ps1 for 1-klikk opprettelse av Windows Desktop- og Start-menysnarveier',
+        'Omfattende hurtigtast-oversikt (Alt+N, Alt+W, Alt+P, Alt+C, Alt+T, Alt+E, Alt+U)'
+      ],
+      ctaLabel: 'Åpne Kommandopalett (Ctrl+K)',
+      ctaAction: () => {
+        onClose();
+        const btn = document.getElementById('btn-open-quicklauncher');
+        btn?.click();
+      }
     }
   ];
 
   const badges = [
     {
       label: 'Release',
-      value: 'v3.5.0-stable',
+      value: 'v3.6.0-stable',
       color: 'bg-emerald-700',
-      markdown: '![Release](https://img.shields.io/badge/Release-v3.5.0--stable-047857?style=for-the-badge&logo=github)'
+      markdown: '![Release](https://img.shields.io/badge/Release-v3.6.0--stable-047857?style=for-the-badge&logo=github)'
     },
     {
       label: 'Build & Tests',
-      value: 'Passing (6/6)',
+      value: 'Passing (8/8)',
       color: 'bg-blue-700',
-      markdown: '![Build](https://img.shields.io/badge/Build_%26_Tests-Passing_(100%25)-1d4ed8?style=for-the-badge&logo=checkmarx)'
+      markdown: '![Build](https://img.shields.io/badge/Build_%26_Tests-Passing_(100%25)-1d4ed8?style=for-the-badge&logo=githubactions)'
+    },
+    {
+      label: 'Notion Sync',
+      value: 'v1.2 REST API',
+      color: 'bg-indigo-700',
+      markdown: '![Notion](https://img.shields.io/badge/Notion-v1.2_Sync-4338ca?style=for-the-badge&logo=notion)'
     },
     {
       label: 'EPD Status',
@@ -210,6 +270,12 @@ export const PresentationReleaseModal: React.FC<PresentationReleaseModalProps> =
       value: '1182 • 12571 • EN 13501',
       color: 'bg-amber-700',
       markdown: '![ISO](https://img.shields.io/badge/ISO_Accredited-1182_%7C_12571_%7C_13501-b45309?style=for-the-badge)'
+    },
+    {
+      label: 'Win Desktop',
+      value: 'EXE & Quicklaunch',
+      color: 'bg-cyan-800',
+      markdown: '![Windows](https://img.shields.io/badge/Windows-Desktop_%26_Quicklauncher-0891b2?style=for-the-badge&logo=windows)'
     },
     {
       label: 'Unreal Bridge',

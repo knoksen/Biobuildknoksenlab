@@ -32,7 +32,7 @@ export default function WindowsDesktopModal({
   onClose,
   onRunWinInst
 }: WindowsDesktopModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'inno' | 'nsis' | 'batch' | 'wizard'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'quicklaunch' | 'inno' | 'nsis' | 'batch' | 'wizard'>('overview');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Simulation wizard state
@@ -219,6 +219,19 @@ Filename: "{app}\\start-app.cmd"; Description: "{cm:LaunchProgram,{#StringChange
           >
             <Terminal className="w-3.5 h-3.5 text-sky-300" />
             <span>1-Klikk Setup (.BAT)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('quicklaunch')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'quicklaunch'
+                ? 'bg-cyan-600 text-white shadow-sm'
+                : 'text-gray-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Terminal className="w-3.5 h-3.5 text-cyan-300" />
+            <span>Quick Launchers & Snarveier</span>
           </button>
 
           <button
@@ -510,6 +523,121 @@ Filename: "{app}\\start-app.cmd"; Description: "{cm:LaunchProgram,{#StringChange
                     {copiedKey === 'ps1-cmd' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     <span>Kjør i PS: .\run-win-installer.ps1</span>
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB: QUICK LAUNCHERS & SNARVEIER ================= */}
+          {activeTab === 'quicklaunch' && (
+            <div className="space-y-4">
+              <div className="bg-cyan-950/25 border border-cyan-800/50 rounded-2xl p-4 flex items-start justify-between gap-4">
+                <div>
+                  <h4 className="font-bold text-sm text-cyan-200 flex items-center gap-2">
+                    <Terminal className="w-4 h-4 text-cyan-400" />
+                    Windows Quick Launchers & Snarveier v3.6.0
+                  </h4>
+                  <p className="text-xs text-cyan-100/70 mt-1 leading-relaxed">
+                    Hurtigstart BioBuild Evidence Lab direkte fra skrivebordet, Start-menyen eller Windows Terminal med automatisk nettleseråpning på <code>http://localhost:3000</code>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const content = `@echo off\nchcp 65001 >nul\ntitle BioBuild Evidence Lab Quick Launcher\ncd /d "%~dp0"\nstart http://localhost:3000\nif not exist "dist\\server.cjs" (\n    call npm run build\n)\nnode dist/server.cjs\n`;
+                    triggerDownload('quicklaunch-biobuild.cmd', content);
+                  }}
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 shadow-md cursor-pointer text-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Last ned .CMD
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. Quick Launch Batch Script */}
+                <div className="bg-neutral-900/70 border border-neutral-800 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                      quicklaunch-biobuild.cmd
+                    </span>
+                    <span className="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-800/50 px-2 py-0.5 rounded-full font-mono">
+                      1-klikk start
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Sjekker om port 3000 er oppe, bygger produksjonspakke ved behov, og åpner standard nettleser automatisk.
+                  </p>
+                  <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800 font-mono text-[10.5px] text-cyan-300 flex items-center justify-between">
+                    <code>.\\quicklaunch-biobuild.cmd</code>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('.\\quicklaunch-biobuild.cmd', 'ql-cmd')}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      {copiedKey === 'ql-cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. PowerShell Shortcut Creator */}
+                <div className="bg-neutral-900/70 border border-neutral-800 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      make-shortcuts.ps1
+                    </span>
+                    <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800/50 px-2 py-0.5 rounded-full font-mono">
+                      Skrivebordsikon
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Oppretter automatisk <code>.lnk</code> snarveier på Windows Skrivebordet og under <code>Start &gt; Alive Houses</code>.
+                  </p>
+                  <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800 font-mono text-[10.5px] text-amber-300 flex items-center justify-between overflow-x-auto">
+                    <span className="truncate mr-2">powershell -File scripts\\make-shortcuts.ps1</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('powershell -ExecutionPolicy Bypass -File scripts\\make-shortcuts.ps1', 'ps-sc-cmd')}
+                      className="text-gray-400 hover:text-white shrink-0"
+                    >
+                      {copiedKey === 'ps-sc-cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Windows Hotkeys Cheat Sheet */}
+              <div className="bg-black/50 border border-neutral-800 rounded-2xl p-4 space-y-2">
+                <span className="font-bold text-white text-xs block">
+                  Tastatursnarveier i BioBuild Evidence Lab:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-gray-300">
+                  <div className="bg-neutral-900/80 p-2 rounded-xl flex items-center justify-between">
+                    <span>Hurtigmeny / Palette</span>
+                    <kbd className="px-1.5 py-0.5 bg-neutral-950 text-amber-300 font-mono text-[10px] rounded border border-neutral-700">Ctrl+K</kbd>
+                  </div>
+                  <div className="bg-neutral-900/80 p-2 rounded-xl flex items-center justify-between">
+                    <span>Notion Synk</span>
+                    <kbd className="px-1.5 py-0.5 bg-neutral-950 text-indigo-300 font-mono text-[10px] rounded border border-neutral-700">Alt+N</kbd>
+                  </div>
+                  <div className="bg-neutral-900/80 p-2 rounded-xl flex items-center justify-between">
+                    <span>Windows Installer</span>
+                    <kbd className="px-1.5 py-0.5 bg-neutral-950 text-cyan-300 font-mono text-[10px] rounded border border-neutral-700">Alt+W</kbd>
+                  </div>
+                  <div className="bg-neutral-900/80 p-2 rounded-xl flex items-center justify-between">
+                    <span>GitHub Presentasjon</span>
+                    <kbd className="px-1.5 py-0.5 bg-neutral-950 text-emerald-300 font-mono text-[10px] rounded border border-neutral-700">Alt+P</kbd>
+                  </div>
+                  <div className="bg-neutral-900/80 p-2 rounded-xl flex items-center justify-between">
+                    <span>Sammenlign</span>
+                    <kbd className="px-1.5 py-0.5 bg-neutral-950 text-gray-300 font-mono text-[10px] rounded border border-neutral-700">Alt+C</kbd>
+                  </div>
+                  <div className="bg-neutral-900/80 p-2 rounded-xl flex items-center justify-between">
+                    <span>Materialtabell / CSV</span>
+                    <kbd className="px-1.5 py-0.5 bg-neutral-950 text-gray-300 font-mono text-[10px] rounded border border-neutral-700">Alt+T</kbd>
+                  </div>
                 </div>
               </div>
             </div>

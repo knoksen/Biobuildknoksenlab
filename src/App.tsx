@@ -58,7 +58,8 @@ import {
   FileSpreadsheet,
   CloudSun,
   ArrowRight,
-  Move
+  Move,
+  Zap
 } from 'lucide-react';
 import { initialBioMaterials, initialResearchers, initialUserSpaces } from './data';
 import { ImageTag } from './types';
@@ -75,6 +76,8 @@ import WeatherMoistureCorrelation from './components/WeatherMoistureCorrelation'
 import ExperimentNotesSection from './components/ExperimentNotesSection';
 import BatchImageAnalysisModal from './components/BatchImageAnalysisModal';
 import PresentationReleaseModal from './components/PresentationReleaseModal';
+import { NotionSyncModal } from './components/NotionSyncModal';
+import { QuicklauncherModal } from './components/QuicklauncherModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateMaterialPDFReport, generateExperimentAndTestDataPDFReport, generateBulkMaterialsPDFReport } from './utils/pdfGenerator';
 import { downloadMaterialsCsv } from './utils/csvExporter';
@@ -111,12 +114,51 @@ const TaggedImageOverlay: React.FC<{
   const [dragLiveCoords, setDragLiveCoords] = useState<{ id: string; x: number; y: number } | null>(null);
   const [clickedTagId, setClickedTagId] = useState<string | null>(null);
   const [hoveredLabelTagId, setHoveredLabelTagId] = useState<string | null>(null);
+  const [expandedNoteTagId, setExpandedNoteTagId] = useState<string | null>(null);
+  const hoverNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [contextMenuTagId, setContextMenuTagId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState<string>('');
   const [expandedClusterIds, setExpandedClusterIds] = useState<string[]>([]);
   const hasDraggedRef = useRef(false);
   const pointerStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const hasMovedSignificantRef = useRef(false);
+
+  const handleLabelMouseEnter = (tagId: string) => {
+    setHoveredLabelTagId(tagId);
+    if (hoverNoteTimerRef.current) {
+      clearTimeout(hoverNoteTimerRef.current);
+    }
+    hoverNoteTimerRef.current = setTimeout(() => {
+      setExpandedNoteTagId(tagId);
+    }, 500);
+  };
+
+  const handleLabelMouseLeave = (tagId: string) => {
+    if (hoverNoteTimerRef.current) {
+      clearTimeout(hoverNoteTimerRef.current);
+      hoverNoteTimerRef.current = null;
+    }
+    setHoveredLabelTagId((prev) => (prev === tagId ? null : prev));
+    setExpandedNoteTagId((prev) => (prev === tagId ? null : prev));
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hoverNoteTimerRef.current) {
+        clearTimeout(hoverNoteTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (draggingTagId || contextMenuTagId) {
+      if (hoverNoteTimerRef.current) {
+        clearTimeout(hoverNoteTimerRef.current);
+        hoverNoteTimerRef.current = null;
+      }
+      setExpandedNoteTagId(null);
+    }
+  }, [draggingTagId, contextMenuTagId]);
 
   const CLUSTER_DISTANCE_THRESHOLD = 10; // percentage distance threshold (0-100 scale)
 
@@ -463,40 +505,136 @@ const TaggedImageOverlay: React.FC<{
             ];
           }
 
-          // Render individual pins (with radial spiderfy offset when part of an expanded multi-pin cluster)
+          // Render individual pins with a spring-based arc expansion from the cluster center point
           const totalInCluster = cluster.items.length;
-          const spiderfyRadius = isMultiCluster ? Math.min(9, 5.5 + totalInCluster * 0.6) : 0;
+          const arcDirection = cluster.centerY < 24 ? 1 : -1; // -1 = upper arch above center, 1 = lower arch near top edge
+          const arcSpan = Math.min(Math.PI * 0.92, Math.max(Math.PI * 0.55, (totalInCluster - 1) * (Math.PI * 0.34)));
+          const baseAngle = arcDirection === -1 ? -Math.PI / 2 : Math.PI / 2;
+          const spiderfyRadius = isMultiCluster ? Math.min(11, 6.8 + totalInCluster * 0.65) : 0;
+
+          const memberArcPositions = cluster.items.map(({ tag, currentX, currentY }, memberPosIdx) => {
+            const isDraggingThis = draggingTagId === tag.id;
+            const t = totalInCluster <= 1 ? 0.5 : memberPosIdx / (totalInCluster - 1);
+            const angle = baseAngle + (t - 0.5) * arcSpan;
+
+            let displayX = currentX;
+            let displayY = currentY;
+            if (isMultiCluster && !isDraggingThis) {
+              displayX = Math.max(4, Math.min(96, Math.round((cluster.centerX + Math.cos(angle) * spiderfyRadius) * 10) / 10));
+              displayY = Math.max(6, Math.min(94, Math.round((cluster.centerY + Math.sin(angle) * spiderfyRadius) * 10) / 10));
+            }
+            return { displayX, displayY, t, angle };
+          });
 
           const pinElements = cluster.items.map(({ tag, idx, currentX, currentY }, memberPosIdx) => {
             const isDraggingThis = draggingTagId === tag.id;
             const isClickedThis = clickedTagId === tag.id;
             const isContextOpenThis = contextMenuTagId === tag.id;
+            const isNoteExpandedThis = expandedNoteTagId === tag.id;
             const isLabelHoveredThis = hoveredLabelTagId === tag.id || highlightedTagId === tag.id;
-            const isHighlightedThis = isClickedThis || isLabelHoveredThis || isContextOpenThis;
+            const isHighlightedThis = isClickedThis || isLabelHoveredThis || isContextOpenThis || isNoteExpandedThis;
 
-            // Calculate radial fan-out position when expanded from a tight cluster (unless dragging)
-            let displayX = currentX;
-            let displayY = currentY;
-            if (isMultiCluster && !isDraggingThis) {
-              const angle = (2 * Math.PI * memberPosIdx) / totalInCluster - Math.PI / 2;
-              displayX = Math.max(4, Math.min(96, Math.round((cluster.centerX + Math.cos(angle) * spiderfyRadius) * 10) / 10));
-              displayY = Math.max(6, Math.min(94, Math.round((cluster.centerY + Math.sin(angle) * spiderfyRadius) * 10) / 10));
-            }
+            const fullNoteText = (tag.note && tag.note.trim()) || (tag.label && tag.label.trim()) || '';
+            const hasNote = fullNoteText.length > 0;
+            const noteFirst50 = hasNote ? fullNoteText.slice(0, 50) : 'Ingen notat registrert';
+            const isTruncated = fullNoteText.length > 50;
+
+            const { displayX, displayY, t } = memberArcPositions[memberPosIdx];
+            const arcPeakLiftPx = arcDirection * 22; // Initial vertical impulse creating a curved arc trajectory under spring physics
+            const arcInitialTilt = (t - 0.5) * 42;
+            const staggerDelay = isMultiCluster ? memberPosIdx * 0.045 : 0;
 
             return (
               <motion.div
                 key={tag.id}
-                initial={{ opacity: 0, scale: 0.2 }}
+                initial={
+                  isMultiCluster
+                    ? {
+                        opacity: 0,
+                        scale: 0.15,
+                        left: `${cluster.centerX}%`,
+                        top: `${cluster.centerY}%`,
+                        y: arcPeakLiftPx,
+                        rotate: arcInitialTilt,
+                      }
+                    : {
+                        opacity: 0,
+                        scale: 0.2,
+                        left: `${displayX}%`,
+                        top: `${displayY}%`,
+                        y: 0,
+                        rotate: 0,
+                      }
+                }
                 animate={{
                   opacity: 1,
-                  scale: isDraggingThis ? 1.25 : isHighlightedThis ? 1.22 : 1
+                  scale: isDraggingThis ? 1.25 : isHighlightedThis ? 1.22 : 1,
+                  left: `${displayX}%`,
+                  top: `${displayY}%`,
+                  y: 0,
+                  rotate: 0,
                 }}
-                exit={{
-                  opacity: 0,
-                  scale: 0,
-                  transition: { duration: 0.22, ease: 'easeIn' }
-                }}
-                transition={{ duration: 0.28, ease: [0.34, 1.56, 0.64, 1] }}
+                exit={
+                  isMultiCluster
+                    ? {
+                        opacity: 0,
+                        scale: 0,
+                        left: `${cluster.centerX}%`,
+                        top: `${cluster.centerY}%`,
+                        y: arcPeakLiftPx * 0.5,
+                        rotate: arcInitialTilt * 0.5,
+                        transition: { type: 'spring', stiffness: 360, damping: 25 },
+                      }
+                    : {
+                        opacity: 0,
+                        scale: 0,
+                        transition: { duration: 0.22, ease: 'easeIn' },
+                      }
+                }
+                transition={
+                  isMultiCluster
+                    ? {
+                        type: 'spring',
+                        stiffness: 320,
+                        damping: 15,
+                        mass: 0.85,
+                        delay: staggerDelay,
+                        left: {
+                          type: 'spring',
+                          stiffness: 260,
+                          damping: 17,
+                          mass: 0.9,
+                          delay: staggerDelay,
+                        },
+                        top: {
+                          type: 'spring',
+                          stiffness: 390,
+                          damping: 14,
+                          mass: 0.75,
+                          delay: staggerDelay,
+                        },
+                        y: {
+                          type: 'spring',
+                          stiffness: 210,
+                          damping: 12,
+                          mass: 0.8,
+                          delay: staggerDelay,
+                        },
+                        rotate: {
+                          type: 'spring',
+                          stiffness: 280,
+                          damping: 14,
+                          delay: staggerDelay,
+                        },
+                        scale: {
+                          type: 'spring',
+                          stiffness: 420,
+                          damping: 14,
+                          delay: staggerDelay,
+                        },
+                      }
+                    : { duration: 0.28, ease: [0.34, 1.56, 0.64, 1] }
+                }
                 tabIndex={0}
                 draggable={!isContextOpenThis}
                 onDragStart={(e: any) => {
@@ -505,17 +643,35 @@ const TaggedImageOverlay: React.FC<{
                   }
                 }}
                 onDragEnd={() => handleDragEnd()}
-                onPointerDown={(e) => handlePointerDownOnPin(e, tag)}
+                onPointerDown={(e) => {
+                  if (hoverNoteTimerRef.current) {
+                    clearTimeout(hoverNoteTimerRef.current);
+                    hoverNoteTimerRef.current = null;
+                  }
+                  setExpandedNoteTagId(null);
+                  handlePointerDownOnPin(e, tag);
+                }}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
+                  if (hoverNoteTimerRef.current) {
+                    clearTimeout(hoverNoteTimerRef.current);
+                    hoverNoteTimerRef.current = null;
+                  }
+                  setExpandedNoteTagId(null);
                   setContextMenuTagId(tag.id);
                   setNoteDraft(tag.note ?? tag.label ?? '');
                 }}
-                style={{ left: `${displayX}%`, top: `${displayY}%` }}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 group/pin animate-pin-entry select-none touch-none cursor-grab active:cursor-grabbing ${
-                  isDraggingThis ? 'z-50 is-dragging scale-125' : isHighlightedThis ? 'z-50' : 'z-40'
-                } ${isHighlightedThis ? 'is-highlighted' : ''} ${isLabelHoveredThis ? 'is-label-hovered' : ''} pin-category-${
+                onMouseEnter={() => handleLabelMouseEnter(tag.id)}
+                onMouseLeave={() => handleLabelMouseLeave(tag.id)}
+                style={isMultiCluster ? undefined : { left: `${displayX}%`, top: `${displayY}%` }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 group/pin ${
+                  isMultiCluster ? 'is-cluster-member' : 'animate-pin-entry'
+                } select-none touch-none cursor-grab active:cursor-grabbing ${
+                  isDraggingThis ? 'z-50 is-dragging scale-125' : isHighlightedThis || isNoteExpandedThis ? 'z-50' : 'z-40'
+                } ${isHighlightedThis ? 'is-highlighted' : ''} ${isLabelHoveredThis ? 'is-label-hovered' : ''} ${
+                  isNoteExpandedThis ? 'is-note-expanded' : ''
+                } pin-category-${
                   tag.category === 'Sprekk' ? 'red' :
                   tag.category === 'Fukt' ? 'blue' :
                   tag.category === 'Delaminering' ? 'orange' :
@@ -539,12 +695,12 @@ const TaggedImageOverlay: React.FC<{
 
                 <div className={`pin-badge w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-lg border-2 ${
                   tag.isAiSuggested ? 'border-amber-300 ring-2 ring-purple-500/50' : 'border-white'
-                } transition-all duration-300 transform ${
+                } ${
                   isDraggingThis
                     ? 'scale-125 shadow-2xl ring-4 ring-white/60'
                     : isHighlightedThis
                     ? 'scale-125 shadow-2xl ring-4 ring-white/80'
-                    : 'group-hover/pin:scale-125'
+                    : ''
                 } ${
                   tag.category === 'Sprekk' ? 'bg-red-600' :
                   tag.category === 'Fukt' ? 'bg-blue-600' :
@@ -554,23 +710,47 @@ const TaggedImageOverlay: React.FC<{
                   {idx + 1}
                 </div>
 
-                {/* Always-visible unobtrusive text label beneath the pin showing sequence number and category */}
+                {/* Always-visible unobtrusive text label beneath the pin showing sequence number and category, expanding vertically after 500ms hover */}
                 <div
-                  onMouseEnter={() => setHoveredLabelTagId(tag.id)}
-                  onMouseLeave={() => setHoveredLabelTagId((prev) => (prev === tag.id ? null : prev))}
-                  className="pin-label absolute top-full mt-1 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-xs text-slate-50 text-[9px] font-semibold leading-tight whitespace-nowrap pointer-events-auto cursor-pointer select-none shadow-md border border-white/25"
+                  onMouseEnter={() => handleLabelMouseEnter(tag.id)}
+                  onMouseLeave={() => handleLabelMouseLeave(tag.id)}
+                  className={`pin-label absolute ${
+                    isNoteExpandedThis && displayY > 80 ? 'bottom-full mb-1' : 'top-full mt-1'
+                  } left-1/2 -translate-x-1/2 ${
+                    isNoteExpandedThis ? 'is-note-expanded shadow-xl' : ''
+                  } inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-900/80 backdrop-blur-xs text-slate-50 text-[9px] font-semibold leading-tight whitespace-nowrap pointer-events-auto cursor-pointer select-none shadow-md border border-white/25`}
                 >
-                  <span className="pin-label-number font-mono font-extrabold">#{idx + 1}</span>
-                  {getCategoryIcon(
-                    tag.category,
-                    `w-2.5 h-2.5 shrink-0 ${
-                      tag.category === 'Sprekk' ? 'text-red-400' :
-                      tag.category === 'Fukt' ? 'text-blue-400' :
-                      tag.category === 'Delaminering' ? 'text-orange-400' :
-                      tag.category === 'Misfarging' ? 'text-amber-400' : 'text-emerald-400'
-                    }`
+                  <div className="pin-label-header inline-flex items-center gap-1">
+                    <span className="pin-label-number font-mono font-extrabold">#{idx + 1}</span>
+                    {getCategoryIcon(
+                      tag.category,
+                      `w-2.5 h-2.5 shrink-0 ${
+                        tag.category === 'Sprekk' ? 'text-red-400' :
+                        tag.category === 'Fukt' ? 'text-blue-400' :
+                        tag.category === 'Delaminering' ? 'text-orange-400' :
+                        tag.category === 'Misfarging' ? 'text-amber-400' : 'text-emerald-400'
+                      }`
+                    )}
+                    <span className="pin-label-category">{tag.category}</span>
+                  </div>
+
+                  {isNoteExpandedThis && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="pin-label-note-preview w-full"
+                    >
+                      <div className="text-[8.5px] leading-snug text-slate-200 pt-1 mt-1 border-t border-white/20 whitespace-normal break-words text-left flex items-start gap-1">
+                        <FileText className="w-2.5 h-2.5 text-amber-300 shrink-0 mt-0.5" />
+                        <span className="flex-1">
+                          <span className="font-semibold text-amber-300 mr-0.5">Notat:</span>
+                          <span>{noteFirst50}{isTruncated ? '…' : ''}</span>
+                        </span>
+                      </div>
+                    </motion.div>
                   )}
-                  <span className="pin-label-category">{tag.category}</span>
                 </div>
 
                 {/* Right-click context menu for quick category, severity, and note updates */}
@@ -813,14 +993,52 @@ const TaggedImageOverlay: React.FC<{
             );
           });
 
-          // If this is an expanded multi-pin cluster, also include a collapse hub button at the cluster center
+          // If this is an expanded multi-pin cluster, render curved arc tether lines and a collapse hub button at the cluster center
           if (isMultiCluster && isClusterExpanded) {
+            pinElements.unshift(
+              <motion.svg
+                key={`${cluster.id}-arcs`}
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="absolute inset-0 w-full h-full pointer-events-none z-30"
+              >
+                {memberArcPositions.map((pos, arcIdx) => {
+                  const midX = (cluster.centerX + pos.displayX) / 2;
+                  const ctrlY = Math.min(cluster.centerY, pos.displayY) + arcDirection * 4.2;
+                  return (
+                    <motion.path
+                      key={`${cluster.id}-arc-${arcIdx}`}
+                      d={`M ${cluster.centerX} ${cluster.centerY} Q ${midX} ${ctrlY} ${pos.displayX} ${pos.displayY}`}
+                      fill="none"
+                      stroke="rgba(251, 191, 36, 0.7)"
+                      strokeWidth="0.45"
+                      strokeDasharray="1.2 1.2"
+                      initial={{ pathLength: 0, opacity: 0 }}
+                      animate={{ pathLength: 1, opacity: 0.85 }}
+                      exit={{ pathLength: 0, opacity: 0 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 260,
+                        damping: 18,
+                        delay: arcIdx * 0.045,
+                      }}
+                    />
+                  );
+                })}
+              </motion.svg>
+            );
+
             pinElements.push(
               <motion.div
                 key={`${cluster.id}-hub`}
-                initial={{ opacity: 0, scale: 0.4 }}
+                initial={{ opacity: 0, scale: 0.3 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 16 }}
                 style={{ left: `${cluster.centerX}%`, top: `${cluster.centerY}%` }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1409,6 +1627,63 @@ export default function App() {
   // Interactive Presentation, Badges, Testing & GitHub Release Modal State
   const [showPresentationModal, setShowPresentationModal] = useState(false);
   const [presentationSection, setPresentationSection] = useState<'presentation' | 'quickstart' | 'testing' | 'release'>('presentation');
+
+  // Notion Integration Modal State
+  const [showNotionModal, setShowNotionModal] = useState(false);
+
+  // Quicklauncher & Command Palette State
+  const [showQuicklauncher, setShowQuicklauncher] = useState(false);
+  const [quicklauncherTab, setQuicklauncherTab] = useState<'palette' | 'shortcuts' | 'win-launcher'>('palette');
+
+  // Global Keyboard Shortcuts (Ctrl+K, Alt+N, Alt+W, Alt+P, Alt+C, Alt+T, Alt+E, Alt+U, ?)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName);
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setQuicklauncherTab('palette');
+        setShowQuicklauncher((prev) => !prev);
+        return;
+      }
+
+      if (e.key === '?' && !isInput) {
+        e.preventDefault();
+        setQuicklauncherTab('shortcuts');
+        setShowQuicklauncher(true);
+        return;
+      }
+
+      if (e.altKey) {
+        if (e.key.toLowerCase() === 'n') {
+          e.preventDefault();
+          setShowNotionModal((prev) => !prev);
+        } else if (e.key.toLowerCase() === 'w') {
+          e.preventDefault();
+          setShowWindowsDesktopModal((prev) => !prev);
+        } else if (e.key.toLowerCase() === 'p') {
+          e.preventDefault();
+          setPresentationSection('presentation');
+          setShowPresentationModal((prev) => !prev);
+        } else if (e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          setShowCompareModal((prev) => !prev);
+        } else if (e.key.toLowerCase() === 't') {
+          e.preventDefault();
+          setShowMaterialTableModal((prev) => !prev);
+        } else if (e.key.toLowerCase() === 'e') {
+          e.preventDefault();
+          setGlobalView('unreal');
+        } else if (e.key.toLowerCase() === 'u') {
+          e.preventDefault();
+          setGlobalView('userspaces');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const handleQuickStartAction = (
     action:
@@ -3400,10 +3675,34 @@ export default function App() {
           </button>
 
           <button 
+            id="btn-open-quicklauncher"
+            onClick={() => {
+              setQuicklauncherTab('palette');
+              setShowQuicklauncher(true);
+            }}
+            className="flex items-center gap-1.5 text-xs uppercase tracking-wider font-semibold bg-amber-500/15 text-amber-950 hover:bg-amber-500/25 border border-amber-600/30 py-2 px-3.5 rounded-full transition-all shadow-xs cursor-pointer"
+            title="Åpne Hurtigmeny & Kommandopalett (Ctrl+K)"
+          >
+            <Zap className="w-4 h-4 text-amber-600" />
+            <span>Hurtigmeny</span>
+            <kbd className="hidden sm:inline-block px-1.5 py-0.2 rounded bg-amber-200/80 text-amber-950 font-mono text-[10px]">Ctrl+K</kbd>
+          </button>
+
+          <button 
+            id="btn-open-notion-sync"
+            onClick={() => setShowNotionModal(true)}
+            className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-indigo-900 text-indigo-100 hover:bg-indigo-800 border border-indigo-700/70 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
+            title="Koble til og synkroniser med ditt Notion Workspace (Alt+N)"
+          >
+            <Database className="w-4 h-4 text-indigo-300" />
+            <span>Notion Sync</span>
+          </button>
+
+          <button 
             id="btn-open-windows-desktop"
             onClick={() => setShowWindowsDesktopModal(true)}
             className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold bg-indigo-950 text-indigo-100 hover:bg-indigo-900 border border-indigo-700/70 py-2 px-4 rounded-full transition-all shadow-sm cursor-pointer"
-            title="Åpne Windows Desktop App (.EXE) og Installasjonsprogram"
+            title="Åpne Windows Desktop App (.EXE), Hurtigstartere og Installasjonsprogram (Alt+W)"
           >
             <Monitor className="w-4 h-4 text-indigo-300" />
             <span>Windows .EXE App</span>
@@ -3504,10 +3803,10 @@ export default function App() {
               setShowPresentationModal(true);
             }}
             className="inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-emerald-500/40 cursor-pointer hover:opacity-90 transition-opacity"
-            title="Åpne GitHub Release v3.5.0 oversikt"
+            title="Åpne GitHub Release v3.6.0 oversikt"
           >
             <span className="bg-slate-800 text-slate-200 px-2 py-0.5">Release</span>
-            <span className="bg-emerald-600 text-white px-2 py-0.5">v3.5.0-stable</span>
+            <span className="bg-emerald-600 text-white px-2 py-0.5">v3.6.0-stable</span>
           </button>
 
           <button
@@ -3521,6 +3820,16 @@ export default function App() {
           >
             <span className="bg-slate-800 text-slate-200 px-2 py-0.5">Tests</span>
             <span className="bg-blue-600 text-white px-2 py-0.5">6/6 Passing</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowNotionModal(true)}
+            className="hidden sm:inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-indigo-500/40 cursor-pointer hover:opacity-90 transition-opacity"
+            title="Notion Integration v1.2 API"
+          >
+            <span className="bg-slate-800 text-slate-200 px-2 py-0.5">Notion</span>
+            <span className="bg-indigo-600 text-white px-2 py-0.5">v1.2 REST</span>
           </button>
 
           <span className="hidden xl:inline-flex items-center rounded-md overflow-hidden text-[10px] font-mono font-bold border border-amber-500/40">
@@ -3542,26 +3851,52 @@ export default function App() {
 
           <button
             type="button"
+            id="btn-quickstart-palette"
+            onClick={() => {
+              setQuicklauncherTab('palette');
+              setShowQuicklauncher(true);
+            }}
+            className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+            title="Åpne Hurtigmeny & Kommandopalett (Ctrl+K)"
+          >
+            <Zap className="w-3.5 h-3.5 text-slate-950" />
+            <span>Hurtigmeny</span>
+            <kbd className="px-1 py-0.2 bg-amber-500/40 rounded text-[9px] font-mono">⌘K</kbd>
+          </button>
+
+          <button
+            type="button"
+            id="btn-quickstart-notion"
+            onClick={() => setShowNotionModal(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/40 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+            title="Koble til og synkroniser med Notion (Alt+N)"
+          >
+            <Database className="w-3.5 h-3.5 text-indigo-200" />
+            <span>Notion Sync</span>
+          </button>
+
+          <button
+            type="button"
             id="btn-quickstart-presentation"
             onClick={() => {
               setPresentationSection('presentation');
               setShowPresentationModal(true);
             }}
-            className="bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-bold px-3 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-600 text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Presentasjon & Release</span>
+            <span>Presentasjon</span>
           </button>
 
           <button
             type="button"
             id="btn-quickstart-pin-clustering"
             onClick={() => handleQuickStartAction('pin-clustering-demo')}
-            className="bg-purple-700 hover:bg-purple-600 text-white border border-purple-400/40 text-[11px] font-semibold px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            className="bg-purple-700 hover:bg-purple-600 text-white border border-purple-400/40 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
             title="Start interaktiv demonstrasjon av markør-klynger (Pin Clustering) og høyreklikk-meny"
           >
             <Target className="w-3.5 h-3.5 text-amber-300" />
-            <span>Demo: Markør-klynger</span>
+            <span>Markør-klynger</span>
           </button>
 
           <button
@@ -3571,7 +3906,7 @@ export default function App() {
             className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
           >
             <Scale className="w-3 h-3 text-emerald-400" />
-            <span>Hurtig-sammenlign</span>
+            <span>Sammenlign</span>
           </button>
 
           <button
@@ -3584,7 +3919,7 @@ export default function App() {
             className="bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
           >
             <ShieldCheck className="w-3 h-3 text-blue-400" />
-            <span>Systemtest & Badges</span>
+            <span>Systemtest</span>
           </button>
         </div>
       </div>
@@ -7788,6 +8123,45 @@ export default function App() {
         userSpaces={userSpaces}
         initialSection={presentationSection}
         onQuickAction={handleQuickStartAction}
+      />
+
+      {/* Notion Integration & Sync Modal */}
+      <NotionSyncModal
+        isOpen={showNotionModal}
+        onClose={() => setShowNotionModal(false)}
+        activeMaterial={activeMaterial}
+        allMaterials={materials}
+      />
+
+      {/* Quicklauncher & Command Palette Modal (Ctrl+K) */}
+      <QuicklauncherModal
+        isOpen={showQuicklauncher}
+        onClose={() => setShowQuicklauncher(false)}
+        materials={materials}
+        initialTab={quicklauncherTab}
+        onSelectMaterial={(id) => {
+          setSelectedMaterialId(id);
+          setGlobalView('materials');
+          setActiveTab('oversikt');
+        }}
+        onOpenNotion={() => setShowNotionModal(true)}
+        onOpenWindowsDesktop={() => setShowWindowsDesktopModal(true)}
+        onOpenPresentation={(sec) => {
+          setPresentationSection(sec || 'presentation');
+          setShowPresentationModal(true);
+        }}
+        onOpenComparison={() => {
+          setCompareMaterialAId(selectedMaterialId);
+          setShowCompareModal(true);
+        }}
+        onOpenTableCsv={() => setShowMaterialTableModal(true)}
+        onOpenUnreal={() => setGlobalView('unreal')}
+        onOpenEierallokering={() => setGlobalView('eierallokering')}
+        onOpenUserSpaces={() => setGlobalView('userspaces')}
+        onOpenPinClusteringDemo={() => handleQuickStartAction('pin-clustering-demo')}
+        onExportPdf={() => {
+          if (activeMaterial) handleDownloadFullMaterialPdf(activeMaterial);
+        }}
       />
 
       {/* Floating Toast Notification for CSV Export */}

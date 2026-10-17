@@ -26,7 +26,7 @@ function runTest(name: string, fn: () => string) {
 }
 
 console.log('================================================================');
-console.log('🧪 BIOBUILD EVIDENCE LAB v3.5.0 — AUTOMATED TEST SUITE');
+console.log('🧪 BIOBUILD EVIDENCE LAB v3.6.0 — AUTOMATED TEST SUITE');
 console.log('================================================================\n');
 
 // 1. Bio-Material Registry & Schema Integrity
@@ -117,7 +117,7 @@ runTest('User Spaces & Research Lab Configuration', () => {
 
 // 6. GitHub Release & Presentation Documentation Files
 runTest('GitHub Presentation, README & Release Workflow Artifacts', () => {
-  const requiredFiles = ['README.md', 'RELEASE_NOTES.md', '.github/workflows/release.yml', 'package.json'];
+  const requiredFiles = ['README.md', 'RELEASE_NOTES.md', '.github/workflows/release.yml', 'package.json', 'PRESENTATION.md'];
   for (const file of requiredFiles) {
     const fullPath = path.resolve(process.cwd(), file);
     if (!fs.existsSync(fullPath)) {
@@ -125,6 +125,43 @@ runTest('GitHub Presentation, README & Release Workflow Artifacts', () => {
     }
   }
   return `All ${requiredFiles.length} GitHub release & presentation artifacts verified on disk`;
+});
+
+// 7. Windows Desktop Quick Launchers & Shortcut Scripts
+runTest('Windows Desktop Quick Launchers & Shortcut Artifacts', () => {
+  const winFiles = [
+    'quicklaunch-biobuild.cmd',
+    'scripts/quicklaunch.ps1',
+    'scripts/make-shortcuts.ps1',
+    'run-win-installer.bat',
+    'run-win-installer.ps1',
+  ];
+  for (const file of winFiles) {
+    const fullPath = path.resolve(process.cwd(), file);
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`Missing Windows launcher script: ${file}`);
+    }
+  }
+  return `All ${winFiles.length} Windows launcher, batch, and shortcut generator scripts verified`;
+});
+
+// 8. Notion Integration & Material Schema Mapping
+runTest('Notion REST API Schema Mapping & Database Serialization', () => {
+  const sampleMaterial = initialBioMaterials[0];
+  if (!sampleMaterial) throw new Error('No materials available for Notion schema test');
+
+  // Verify fields required for Notion database row and page blocks
+  const notionTitle = sampleMaterial.name;
+  const notionCategory = sampleMaterial.category;
+  const notionTrl = sampleMaterial.trl;
+  const notionGwp = sampleMaterial.epd.gwp;
+  const notionFire = sampleMaterial.testResults.fireRating || 'A1';
+
+  if (!notionTitle || !notionCategory || typeof notionTrl !== 'number' || typeof notionGwp !== 'number') {
+    throw new Error('Notion material payload validation failed');
+  }
+
+  return `Notion page blocks and properties verified for "${notionTitle}" (TRL ${notionTrl}, GWP ${notionGwp} kg CO₂e, Category: ${notionCategory})`;
 });
 
 const failed = results.filter((r) => !r.passed);

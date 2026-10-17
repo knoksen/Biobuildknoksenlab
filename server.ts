@@ -98,6 +98,9 @@ app.get('/api/desktop/file/:filename', (req, res) => {
     'BioBuild-Setup.nsi': path.join(process.cwd(), 'installer', 'BioBuild-Setup.nsi'),
     'start-app.cmd': path.join(process.cwd(), 'start-app.cmd'),
     'make-win-exe.bat': path.join(process.cwd(), 'installer', 'make-win-exe.bat'),
+    'quicklaunch-biobuild.cmd': path.join(process.cwd(), 'quicklaunch-biobuild.cmd'),
+    'quicklaunch.ps1': path.join(process.cwd(), 'scripts', 'quicklaunch.ps1'),
+    'make-shortcuts.ps1': path.join(process.cwd(), 'scripts', 'make-shortcuts.ps1'),
   };
 
   const filePath = allowedFiles[req.params.filename];
@@ -106,6 +109,433 @@ app.get('/api/desktop/file/:filename', (req, res) => {
   }
 
   res.download(filePath, req.params.filename);
+});
+
+// -------------------------------------------------------------
+// Notion API Integration Endpoints
+// -------------------------------------------------------------
+
+function getNotionHeaders(token: string) {
+  return {
+    'Authorization': `Bearer ${token.trim()}`,
+    'Notion-Version': '2022-06-28',
+    'Content-Type': 'application/json',
+  };
+}
+
+// 1. Test connection to Notion
+app.post('/api/notion/test', async (req, res) => {
+  try {
+    const token = req.body.apiKey || process.env.NOTION_API_KEY;
+    if (!token) {
+      return res.status(400).json({ error: 'Notion API token (Internal Integration Secret) is required.' });
+    }
+
+    const response = await fetch('https://api.notion.com/v1/users/me', {
+      method: 'GET',
+      headers: getNotionHeaders(token),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      const errMsg = data.message || `Notion API returned status ${response.status}`;
+      return res.status(response.status).json({ error: errMsg, details: data });
+    }
+
+    res.json({
+      status: 'ok',
+      botId: data.id,
+      botName: data.name || (data.bot && data.bot.owner ? `Bot (${data.bot.owner.type})` : 'BioBuild Integration'),
+      workspaceName: data.bot?.workspace_name || 'Notion Workspace',
+    });
+  } catch (error: any) {
+    console.error('Error testing Notion connection:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke koble til Notion API' });
+  }
+});
+
+// 2. Search available databases in Notion
+app.post('/api/notion/databases', async (req, res) => {
+  try {
+    const token = req.body.apiKey || process.env.NOTION_API_KEY;
+    if (!token) {
+      return res.status(400).json({ error: 'Notion API token is required.' });
+    }
+
+    const response = await fetch('https://api.notion.com/v1/search', {
+      method: 'POST',
+      headers: getNotionHeaders(token),
+      body: JSON.stringify({
+        filter: {
+          value: 'database',
+          property: 'object',
+        },
+        page_size: 25,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.message || 'Feil ved henting av Notion-databaser' });
+    }
+
+    const databases = (data.results || []).map((db: any) => {
+      const titleProp = db.title || [];
+      const titleText = titleProp.map((t: any) => t.plain_text).join('') || 'Uten navn';
+      return {
+        id: db.id,
+        title: titleText,
+        url: db.url,
+      };
+    });
+
+    res.json({ databases });
+  } catch (error: any) {
+    console.error('Error fetching Notion databases:', error);
+    res.status(500).json({ error: error.message || 'Feil ved henting av databaser fra Notion' });
+  }
+});
+
+// 3. Create a dedicated "BioBuild Research Lab" Database in Notion
+app.post('/api/notion/create-database', async (req, res) => {
+  try {
+    const token = req.body.apiKey || process.env.NOTION_API_KEY;
+    let { parentPageId } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Notion API token is required.' });
+    }
+    if (!parentPageId) {
+      return res.status(400).json({ error: 'Parent Page ID or URL is required.' });
+    }
+
+    // Clean page ID if a full Notion URL was supplied
+    if (parentPageId.includes('notion.so/')) {
+      const parts = parentPageId.split('-');
+      const lastPart = parts[parts.length - 1].split('?')[0];
+      if (lastPart.length >= 32) {
+        parentPageId = lastPart.slice(-32);
+      }
+    }
+
+    // Format clean UUID if 32 hex chars
+    let cleanParentId = parentPageId.replace(/-/g, '');
+    if (cleanParentId.length === 32) {
+      cleanParentId = `${cleanParentId.slice(0, 8)}-${cleanParentId.slice(8, 12)}-${cleanParentId.slice(12, 16)}-${cleanParentId.slice(16, 20)}-${cleanParentId.slice(20)}`;
+    }
+
+    const payload = {
+      parent: {
+        type: 'page_id',
+        page_id: cleanParentId,
+      },
+      title: [
+        {
+          type: 'text',
+          text: {
+            content: 'BioBuild Research Lab — Alive Houses',
+          },
+        },
+      ],
+      properties: {
+        Navn: { title: {} },
+        Kategori: {
+          select: {
+            options: [
+              { name: 'Mykologiske', color: 'purple' },
+              { name: 'Plantebaserte', color: 'green' },
+              { name: 'Alger & Bakterier', color: 'blue' },
+              { name: 'Tre & Kork', color: 'brown' },
+            ],
+          },
+        },
+        'TRL-Nivå': { number: { format: 'number' } },
+        'EPD GWP (kg CO2e/kg)': { number: { format: 'number' } },
+        'Trykkfasthet (MPa)': { number: { format: 'number' } },
+        Brannklasse: {
+          select: {
+            options: [
+              { name: 'A1', color: 'green' },
+              { name: 'B-s1, d0', color: 'blue' },
+              { name: 'B-s2, d0', color: 'yellow' },
+              { name: 'D-s2, d0', color: 'orange' },
+            ],
+          },
+        },
+        Sertifisering: {
+          rich_text: {},
+        },
+        Sirkularitet: {
+          rich_text: {},
+        },
+      },
+    };
+
+    const response = await fetch('https://api.notion.com/v1/databases', {
+      method: 'POST',
+      headers: getNotionHeaders(token),
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.message || 'Kunne ikke opprette database i Notion', details: data });
+    }
+
+    res.json({
+      status: 'ok',
+      database: {
+        id: data.id,
+        title: 'BioBuild Research Lab — Alive Houses',
+        url: data.url,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error creating Notion database:', error);
+    res.status(500).json({ error: error.message || 'Kunne ikke opprette Notion database' });
+  }
+});
+
+// 4. Sync / Export BioMaterial to Notion
+app.post('/api/notion/sync-material', async (req, res) => {
+  try {
+    const token = req.body.apiKey || process.env.NOTION_API_KEY;
+    const { material } = req.body;
+    let { databaseId, parentPageId } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Notion API token is required.' });
+    }
+    if (!material || !material.name) {
+      return res.status(400).json({ error: 'Material payload is required.' });
+    }
+
+    // Build rich child blocks for page body
+    const blocks: any[] = [
+      {
+        object: 'block',
+        type: 'heading_2',
+        heading_2: {
+          rich_text: [{ type: 'text', text: { content: `🔬 ${material.name}` } }],
+        },
+      },
+      {
+        object: 'block',
+        type: 'callout',
+        callout: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: `Alive Houses AS Forskningsmotor • Kategori: ${material.category} • TRL ${material.trl} • EPD GWP: ${material.epd?.gwp ?? 0} kg CO₂e/kg`,
+              },
+            },
+          ],
+          icon: { emoji: '🌱' },
+        },
+      },
+      {
+        object: 'block',
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: material.description || 'Ingen beskrivelse registrert.',
+              },
+            },
+          ],
+        },
+      },
+      {
+        object: 'block',
+        type: 'heading_3',
+        heading_3: {
+          rich_text: [{ type: 'text', text: { content: 'Biologisk og Kjemisk Sammensetning' } }],
+        },
+      },
+      {
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [
+            { type: 'text', text: { content: 'Biologisk: ' }, annotations: { bold: true } },
+            { type: 'text', text: { content: material.biologicalComposition || 'Ikke oppgitt' } },
+          ],
+        },
+      },
+      {
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [
+            { type: 'text', text: { content: 'Kjemisk: ' }, annotations: { bold: true } },
+            { type: 'text', text: { content: material.chemicalComposition || 'Ikke oppgitt' } },
+          ],
+        },
+      },
+      {
+        object: 'block',
+        type: 'heading_3',
+        heading_3: {
+          rich_text: [{ type: 'text', text: { content: 'Laboratorietester & ISO-Akkrediteringer' } }],
+        },
+      },
+      {
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [
+            { type: 'text', text: { content: 'Brannmotstand: ' }, annotations: { bold: true } },
+            { type: 'text', text: { content: `${material.testResults?.fire || 'Ikke testet'} (Klasse: ${material.testResults?.fireRating || 'Uklassifisert'})` } },
+          ],
+        },
+      },
+      {
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [
+            { type: 'text', text: { content: 'Mekanisk Fasthet: ' }, annotations: { bold: true } },
+            { type: 'text', text: { content: `${material.testResults?.strengthMpa ? `${material.testResults.strengthMpa} MPa - ` : ''}${material.testResults?.strength || 'Ikke testet'}` } },
+          ],
+        },
+      },
+      {
+        object: 'block',
+        type: 'bulleted_list_item',
+        bulleted_list_item: {
+          rich_text: [
+            { type: 'text', text: { content: 'Fuktmotstand (ISO 12571): ' }, annotations: { bold: true } },
+            { type: 'text', text: { content: material.testResults?.moisture || 'Ikke testet' } },
+          ],
+        },
+      },
+    ];
+
+    if (material.provenTesting) {
+      blocks.push({
+        object: 'block',
+        type: 'callout',
+        callout: {
+          rich_text: [
+            {
+              type: 'text',
+              text: {
+                content: `Offisiell Akkreditering: ${material.provenTesting.accreditationNumber} (${material.provenTesting.certifiedBody}). Standarder: ${material.provenTesting.passedStandards?.join(', ')}`,
+              },
+            },
+          ],
+          icon: { emoji: '🛡️' },
+        },
+      });
+    }
+
+    if (material.experiments && material.experiments.length > 0) {
+      blocks.push({
+        object: 'block',
+        type: 'heading_3',
+        heading_3: {
+          rich_text: [{ type: 'text', text: { content: `Utførte Laboratorieforsøk (${material.experiments.length})` } }],
+        },
+      });
+
+      material.experiments.slice(0, 5).forEach((exp: any) => {
+        blocks.push({
+          object: 'block',
+          type: 'bulleted_list_item',
+          bulleted_list_item: {
+            rich_text: [
+              { type: 'text', text: { content: `${exp.title}: ` }, annotations: { bold: true } },
+              { type: 'text', text: { content: exp.hypothesis || exp.description || 'Gjennomført' } },
+            ],
+          },
+        });
+      });
+    }
+
+    // Determine target parent: database vs page
+    let parentPayload: any = null;
+    let pageProperties: any = {};
+
+    if (databaseId) {
+      // Clean database UUID
+      let cleanDbId = databaseId.replace(/-/g, '').trim();
+      if (cleanDbId.length === 32) {
+        cleanDbId = `${cleanDbId.slice(0, 8)}-${cleanDbId.slice(8, 12)}-${cleanDbId.slice(12, 16)}-${cleanDbId.slice(16, 20)}-${cleanDbId.slice(20)}`;
+      }
+      parentPayload = { database_id: cleanDbId };
+
+      // Map properties gracefully to standard or custom database schemas
+      pageProperties = {
+        title: {
+          title: [{ text: { content: material.name } }],
+        },
+      };
+    } else if (parentPageId) {
+      let cleanPgId = parentPageId.replace(/-/g, '').trim();
+      if (cleanPgId.length === 32) {
+        cleanPgId = `${cleanPgId.slice(0, 8)}-${cleanPgId.slice(8, 12)}-${cleanPgId.slice(12, 16)}-${cleanPgId.slice(16, 20)}-${cleanPgId.slice(20)}`;
+      }
+      parentPayload = { page_id: cleanPgId };
+      pageProperties = {
+        title: {
+          title: [{ text: { content: material.name } }],
+        },
+      };
+    } else {
+      // If neither was provided, search for first database available
+      const searchRes = await fetch('https://api.notion.com/v1/search', {
+        method: 'POST',
+        headers: getNotionHeaders(token),
+        body: JSON.stringify({ filter: { value: 'database', property: 'object' }, page_size: 1 }),
+      });
+      const searchData = await searchRes.json();
+      if (searchRes.ok && searchData.results && searchData.results.length > 0) {
+        parentPayload = { database_id: searchData.results[0].id };
+        pageProperties = {
+          title: {
+            title: [{ text: { content: material.name } }],
+          },
+        };
+      } else {
+        return res.status(400).json({
+          error: 'Ingen database-ID eller overordnet side-ID ble oppgitt, og ingen tilgjengelig database ble funnet i Notion. Del en side eller database med din Notion-integrasjon først.',
+        });
+      }
+    }
+
+    const createPagePayload = {
+      parent: parentPayload,
+      properties: pageProperties,
+      children: blocks,
+    };
+
+    const response = await fetch('https://api.notion.com/v1/pages', {
+      method: 'POST',
+      headers: getNotionHeaders(token),
+      body: JSON.stringify(createPagePayload),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: data.message || 'Kunne ikke opprette side i Notion',
+        details: data,
+      });
+    }
+
+    res.json({
+      status: 'ok',
+      id: data.id,
+      url: data.url,
+      message: `Materiale "${material.name}" ble vellykket synkronisert med Notion!`,
+    });
+  } catch (error: any) {
+    console.error('Error syncing material to Notion:', error);
+    res.status(500).json({ error: error.message || 'Feil under synkronisering med Notion' });
+  }
 });
 
 // 1. Generate Material Profile

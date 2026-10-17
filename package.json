@@ -1,7 +1,7 @@
 {
   "name": "biobuild-evidence-lab",
   "private": true,
-  "version": "3.5.0",
+  "version": "3.6.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -14,12 +14,15 @@
     "win:inst": "node scripts/win-installer.js",
     "win-inst": "node scripts/win-installer.js",
     "win:installer": "node scripts/win-installer.js",
+    "win:quicklaunch": "node scripts/win-installer.js",
+    "win:shortcuts": "node scripts/win-installer.js",
     "desktop:build": "node scripts/build-win-desktop.js",
     "desktop:pack": "node scripts/generate-exe-package.js",
     "dist:win": "node scripts/generate-exe-package.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@notionhq/client": "^5.27.1",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
