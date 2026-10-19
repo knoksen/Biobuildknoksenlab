@@ -1217,7 +1217,7 @@ Returner svaret på NORSK i strikt JSON-format.`
             }
           };
         } catch (itemErr: any) {
-          console.error(`Feil ved analyse av prøve ${itemName}:`, itemErr);
+          console.error('Feil ved analyse av prøve %s:', itemName, itemErr);
           return {
             id: item.id || `img-${itemIndex}`,
             name: itemName,
