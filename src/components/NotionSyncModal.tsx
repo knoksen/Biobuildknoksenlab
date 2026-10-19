@@ -75,7 +75,6 @@ export const NotionSyncModal: React.FC<NotionSyncModalProps> = ({
       const saved = localStorage.getItem('biobuild_notion_config');
       if (saved) {
         const parsed: NotionConfig = JSON.parse(saved);
-        if (parsed.apiKey) setApiKey(parsed.apiKey);
         if (parsed.databaseId) setDatabaseId(parsed.databaseId);
         if (parsed.botName || parsed.workspaceName) {
           setBotInfo({ name: parsed.botName, workspace: parsed.workspaceName });
@@ -90,7 +89,6 @@ export const NotionSyncModal: React.FC<NotionSyncModalProps> = ({
   const saveConfig = (newApiKey: string, newDbId: string, bot?: { name?: string; workspace?: string }) => {
     try {
       const cfg: NotionConfig = {
-        apiKey: newApiKey,
         databaseId: newDbId,
         botName: bot?.name,
         workspaceName: bot?.workspace
