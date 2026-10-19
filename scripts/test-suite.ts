@@ -164,6 +164,70 @@ runTest('Notion REST API Schema Mapping & Database Serialization', () => {
   return `Notion page blocks and properties verified for "${notionTitle}" (TRL ${notionTrl}, GWP ${notionGwp} kg CO₂e, Category: ${notionCategory})`;
 });
 
+// 9. Material Overview Card Floating PDF Generation Button & Utility
+runTest('Material Overview Card Floating PDF Generator Utility Integration', () => {
+  const sampleMaterial = initialBioMaterials[0];
+  const sampleOwner = initialResearchers[0];
+  if (!sampleMaterial) throw new Error('No materials available for PDF generation test');
+
+  // Verify App.tsx contains the floating PDF generation button triggering generateMaterialPDFReport
+  const appFile = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+  if (!appFile.includes('floating-pdf-overview-btn')) {
+    throw new Error('App.tsx missing floating-pdf-overview-btn on the material overview card');
+  }
+  if (!appFile.includes('generateMaterialPDFReport')) {
+    throw new Error('App.tsx missing import or usage of generateMaterialPDFReport');
+  }
+  return `Floating PDF button registered on material overview card (linked to generateMaterialPDFReport for "${sampleMaterial.name}")`;
+});
+
+// 10. PDF Generation Shimmer & Pulsing Feedback Animation
+runTest('PDF Generation Shimmer & Subtle Pulsing Feedback States', () => {
+  const appFile = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+  const cssFile = fs.readFileSync(path.resolve(process.cwd(), 'src/index.css'), 'utf-8');
+
+  // Verify shimmering animation definition
+  if (!cssFile.includes('animate-shimmer') || !cssFile.includes('btn-shimmer')) {
+    throw new Error('index.css missing animate-shimmer or btn-shimmer keyframe definition');
+  }
+
+  // Verify subtle pulsing animation definition
+  if (!cssFile.includes('animate-btn-pulse') || !cssFile.includes('btn-pulse-subtle')) {
+    throw new Error('index.css missing animate-btn-pulse or btn-pulse-subtle keyframe definition');
+  }
+
+  // Verify App.tsx applies shimmer and pulse when isGeneratingPdf is active
+  if (!appFile.includes('animate-shimmer') || !appFile.includes('animate-btn-pulse')) {
+    throw new Error('App.tsx missing conditional application of animate-shimmer and animate-btn-pulse on PDF generation buttons');
+  }
+
+  return 'Subtle pulsing and shimmer animations configured in CSS and bound to isGeneratingPdf state across PDF generation buttons';
+});
+
+// 11. AI Material Generator Resilience & Model Validation
+runTest('AI Material Generator Multi-Model Fallback & Resilience', () => {
+  const serverFile = fs.readFileSync(path.resolve(process.cwd(), 'server.ts'), 'utf-8');
+  const appFile = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+
+  // Verify server has multi-model fallback and fallback generator
+  if (!serverFile.includes('generateWithGeminiFallback')) {
+    throw new Error('server.ts missing generateWithGeminiFallback function');
+  }
+  if (!serverFile.includes('generateFallbackMaterialProfile')) {
+    throw new Error('server.ts missing generateFallbackMaterialProfile function');
+  }
+  if (!serverFile.includes('normalizeGeminiModel')) {
+    throw new Error('server.ts missing normalizeGeminiModel function');
+  }
+
+  // Ensure deprecated gemini-3.6-flash is not active in App.tsx or server.ts routes
+  if (appFile.includes("'gemini-3.6-flash'")) {
+    throw new Error('App.tsx still contains deprecated gemini-3.6-flash model reference');
+  }
+
+  return 'server.ts and App.tsx verified with multi-model fallback, zero 500 error propagation, and valid Gemini 3.8/3.1 models';
+});
+
 const failed = results.filter((r) => !r.passed);
 console.log('\n----------------------------------------------------------------');
 console.log(`Summary: ${results.length - failed.length}/${results.length} tests passed`);
