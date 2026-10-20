@@ -1,0 +1,41 @@
+{
+  "appId": "no.alivehouses.biobuild",
+  "productName": "BioBuild Evidence Lab",
+  "copyright": "Copyright © 2026 Alive Houses AS",
+  "directories": {
+    "output": "dist-installer",
+    "buildResources": "assets"
+  },
+  "files": [
+    "dist/**/*",
+    "desktop/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      },
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "BioBuild Evidence Lab",
+    "uninstallDisplayName": "BioBuild Evidence Lab",
+    "runAfterFinish": true
+  }
+}

@@ -15,6 +15,15 @@ export interface OpenQuestion {
   status: 'Åpen' | 'Under utforsking' | 'Løst';
 }
 
+export interface ExperimentNote {
+  id: string;
+  timestamp: string;
+  content: string;
+  author: string;
+  category: 'Observasjon' | 'Måling & Prøving' | 'Miljø & Klima' | 'Avvik / Anomali' | 'Metodejustering';
+  tags?: string[];
+}
+
 export interface Experiment {
   id: string;
   title: string;
@@ -26,6 +35,7 @@ export interface Experiment {
   endDate?: string;
   logs: string[];
   results?: string;
+  notes?: ExperimentNote[];
 }
 
 export interface ProvenTestingMark {
@@ -78,6 +88,7 @@ export interface BioMaterial {
   experiments: Experiment[];
   measurements?: MeasurementPoint[];
   ownerId?: string;
+  spaceIds?: string[];
 }
 
 export interface MeasurementPoint {
@@ -107,5 +118,71 @@ export interface ImageTag {
   y: number; // 0-100 percentage
   label: string;
   category: 'Sprekk' | 'Fukt' | 'Delaminering' | 'Misfarging' | 'Generelt';
+  isAiSuggested?: boolean;
+  severity?: string;
+  note?: string;
 }
+
+export interface UserSpace {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  leadResearcherId: string;
+  department: string;
+  focusAreas: string[];
+  pinnedMaterialIds: string[];
+  activeExperimentsCount: number;
+  memberCount: number;
+  badge: string;
+  color: string;
+  isCustom?: boolean;
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface BatchImageItem {
+  id: string;
+  name: string;
+  file?: File;
+  previewUrl: string;
+  fileSizeKb: number;
+  specimenLabel: string;
+  testStage: string;
+  materialName?: string;
+  status: 'pending' | 'analyzing' | 'completed' | 'error';
+  errorMessage?: string;
+  durationMs?: number;
+  result?: {
+    integrityScore: number;
+    overallCondition: string;
+    severity: 'lav' | 'moderat' | 'kritisk';
+    primaryFailureMode: string;
+    defectsDetected: string[];
+    detailedAnalysis: string;
+    recommendations: string[];
+    microscopicObservations?: string[];
+    confidenceScore?: number;
+    processingTimeMs?: number;
+    usedModel?: string;
+  };
+}
+
+export interface BatchAnalysisSummary {
+  totalSubmitted: number;
+  totalCompleted: number;
+  avgIntegrityScore: number;
+  defectDistribution: {
+    critical: number;
+    moderate: number;
+    low: number;
+    sound: number;
+  };
+  failureModeCounts: Record<string, number>;
+  topDefects: Array<{ defect: string; count: number }>;
+  batchVerdict: string;
+  analysisFocus: string;
+  timestamp: string;
+}
+
 
