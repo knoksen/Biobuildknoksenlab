@@ -555,7 +555,8 @@ async function generateWithGeminiFallback(
         config: params.config,
       });
       if (response && response.text) {
-        return { response, modelUsed: model };
+        // Report the model that actually answered (local adapter's modelVersion), not the requested name.
+        return { response, modelUsed: response.modelVersion || model };
       }
     } catch (err: any) {
       lastError = err;
@@ -1185,7 +1186,7 @@ Returner svaret på NORSK i strikt JSON-format.`
             materialName: itemMatName,
             status: 'completed',
             durationMs,
-            usedModel: selectedModel,
+            usedModel: response.modelVersion || selectedModel,
             analysis: {
               integrityScore: parsed.integrityScore ?? 75,
               overallCondition: parsed.overallCondition || 'Analyse fullført',
@@ -1197,7 +1198,7 @@ Returner svaret på NORSK i strikt JSON-format.`
               microscopicObservations: Array.isArray(parsed.microscopicObservations) ? parsed.microscopicObservations : [],
               confidenceScore: parsed.confidenceScore ?? 88,
               processingTimeMs: durationMs,
-              usedModel: selectedModel
+              usedModel: response.modelVersion || selectedModel
             }
           };
         } catch (itemErr: any) {
@@ -1273,7 +1274,7 @@ Returner svaret på NORSK i strikt JSON-format.`
 
     res.json({
       success: true,
-      modelUsed: selectedModel,
+      modelUsed: (completedItems[0] as any)?.usedModel || selectedModel,
       batchSummary: {
         totalSubmitted: totalCount,
         totalCompleted: completedCount,
@@ -1404,7 +1405,7 @@ Returner svaret på NORSK i strikt JSON-format.`
     }
 
     const defectData = JSON.parse(resultText.trim());
-    defectData.usedModel = selectedModel;
+    defectData.usedModel = response.modelVersion || selectedModel;
     res.json(defectData);
   } catch (error: any) {
     console.error('Error suggesting defects with Gemini:', error);

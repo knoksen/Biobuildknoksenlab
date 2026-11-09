@@ -41,7 +41,7 @@ export function loadLocalAiConfig(env: NodeJS.ProcessEnv = process.env): LocalAi
     model,
     visionModel: env.AI_VISION_MODEL || model,
     apiKey: env.AI_API_KEY || undefined,
-    timeoutMs: Number(env.AI_TIMEOUT_MS) || 120_000,
+    timeoutMs: Number(env.AI_TIMEOUT_MS) > 0 ? Number(env.AI_TIMEOUT_MS) : 120_000,
   };
 }
 
@@ -162,8 +162,8 @@ export class GoogleGenAI {
           signal: AbortSignal.timeout(this.cfg.timeoutMs),
         });
       } catch (e: any) {
-        const why = e?.name === 'TimeoutError' ? `timed out after ${this.cfg.timeoutMs} ms` : 'is not reachable';
-        throw new Error(`Jarle Local AI ${why}`);
+        const why = e?.name === 'TimeoutError' ? `timed out after ${this.cfg.timeoutMs} ms` : `is not reachable (${String(e?.cause?.code || e?.message || e).slice(0, 80)})`;
+        throw new Error(`Jarle Local AI ${why}`, { cause: e });
       }
       if (!res.ok) {
         const detail = (await res.text().catch(() => '')).slice(0, 300);
@@ -172,10 +172,13 @@ export class GoogleGenAI {
       const data: any = await res.json();
       const choice = data?.choices?.[0];
       const raw: string = choice?.message?.content ?? '';
-      if (!raw.trim()) {
-        throw new Error(`Jarle Local AI returned an empty answer${choice?.finish_reason === 'length' ? ' (cut off by context limit)' : ''}`);
-      }
-      return { text: wantsJson ? extractJson(raw) : raw, modelVersion: String(body.model) };
+      if (choice?.finish_reason === 'length') throw new Error('Jarle Local AI answer was cut off (context limit)');
+      if (!raw.trim()) throw new Error('Jarle Local AI returned an empty answer');
+      if (!wantsJson) return { text: raw, modelVersion: String(body.model) };
+      const json = extractJson(raw);
+      // JSON was requested: throw instead of returning prose, so the route's rule-based fallback runs.
+      try { JSON.parse(json); } catch { throw new Error(`Jarle Local AI did not return JSON: ${raw.slice(0, 80)}`); }
+      return { text: json, modelVersion: String(body.model) };
     },
   };
 }

@@ -71,3 +71,13 @@ test('upstream error is reported', async () => {
   reply = { status: 404, body: { error: 'model not found' } };
   await assert.rejects(ai.models.generateContent({ contents: 'x' }), /404/);
 });
+
+test('JSON requested but prose returned -> error, so the rule-based fallback runs', async () => {
+  reply = ok('Sorry, I cannot do that.');
+  await assert.rejects(ai.models.generateContent({ contents: 'x', config: { responseMimeType: 'application/json' } }), /did not return JSON/);
+});
+
+test('modelVersion names the local model that answered', async () => {
+  reply = ok('hi');
+  assert.equal((await ai.models.generateContent({ model: 'gemini-3.8-flash', contents: 'x' })).modelVersion, 'qwen3.5:4b');
+});
