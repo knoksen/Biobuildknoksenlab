@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type } from './server/localGenAI';
 import { createServer as createViteServer } from 'vite';
 import dns from 'dns/promises';
 import net from 'net';
@@ -23,20 +23,9 @@ const ALLOWED_REFERENCE_IMAGE_ORIGINS = new Set<string>([
 let aiClient: GoogleGenAI | null = null;
 
 function getAiClient(): GoogleGenAI {
-  if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
-      throw new Error('GEMINI_API_KEY environment variable is required. Please set it in the Secrets panel.');
-    }
-    aiClient = new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
-  }
+  // Jarle Local AI (OpenAI-compatible). Configured with AI_BASE_URL / AI_MODEL / AI_VISION_MODEL;
+  // no Gemini key is used. When the AI is unreachable, the routes below use their rule-based fallbacks.
+  if (!aiClient) aiClient = new GoogleGenAI();
   return aiClient;
 }
 
@@ -553,14 +542,9 @@ async function generateWithGeminiFallback(
   params: { contents: any; config?: any }
 ): Promise<{ response: any; modelUsed: string }> {
   const normalized = normalizeGeminiModel(preferredModel);
-  const modelsToTry = [
-    normalized,
-    'gemini-3.1-flash-lite',
-    'gemini-3.8-flash',
-    'gemini-flash-latest'
-  ];
-  // Deduplicate while preserving order
-  const uniqueModels = Array.from(new Set(modelsToTry));
+  // Jarle Local AI chooses the model itself (AI_MODEL), so a single attempt is enough;
+  // retrying under other names would only multiply the wait when the AI is offline.
+  const uniqueModels = [normalized];
 
   let lastError: any = null;
   for (const model of uniqueModels) {
@@ -571,7 +555,8 @@ async function generateWithGeminiFallback(
         config: params.config,
       });
       if (response && response.text) {
-        return { response, modelUsed: model };
+        // Report the model that actually answered (local adapter's modelVersion), not the requested name.
+        return { response, modelUsed: response.modelVersion || model };
       }
     } catch (err: any) {
       lastError = err;
@@ -1201,7 +1186,7 @@ Returner svaret på NORSK i strikt JSON-format.`
             materialName: itemMatName,
             status: 'completed',
             durationMs,
-            usedModel: selectedModel,
+            usedModel: response.modelVersion || selectedModel,
             analysis: {
               integrityScore: parsed.integrityScore ?? 75,
               overallCondition: parsed.overallCondition || 'Analyse fullført',
@@ -1213,7 +1198,7 @@ Returner svaret på NORSK i strikt JSON-format.`
               microscopicObservations: Array.isArray(parsed.microscopicObservations) ? parsed.microscopicObservations : [],
               confidenceScore: parsed.confidenceScore ?? 88,
               processingTimeMs: durationMs,
-              usedModel: selectedModel
+              usedModel: response.modelVersion || selectedModel
             }
           };
         } catch (itemErr: any) {
@@ -1289,7 +1274,7 @@ Returner svaret på NORSK i strikt JSON-format.`
 
     res.json({
       success: true,
-      modelUsed: selectedModel,
+      modelUsed: (completedItems[0] as any)?.usedModel || selectedModel,
       batchSummary: {
         totalSubmitted: totalCount,
         totalCompleted: completedCount,
@@ -1420,7 +1405,7 @@ Returner svaret på NORSK i strikt JSON-format.`
     }
 
     const defectData = JSON.parse(resultText.trim());
-    defectData.usedModel = selectedModel;
+    defectData.usedModel = response.modelVersion || selectedModel;
     res.json(defectData);
   } catch (error: any) {
     console.error('Error suggesting defects with Gemini:', error);

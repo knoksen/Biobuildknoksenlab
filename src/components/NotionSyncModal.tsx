@@ -29,7 +29,7 @@ interface NotionSyncModalProps {
 }
 
 interface NotionConfig {
-  apiKey: string;
+  apiKey?: string; // never persisted to localStorage; kept in memory only
   databaseId: string;
   workspaceName?: string;
   botName?: string;
