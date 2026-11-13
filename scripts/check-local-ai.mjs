@@ -22,16 +22,19 @@ const CODE = /\.(ts|tsx|js|jsx|mjs|cjs)$/;
 const isTest = (rel) => /(^|\/)tests?\//.test(rel) || /\.test\.[a-z]+$/.test(rel);
 
 // Module specifiers in every import form: from "x", import "x", import("x"), require("x"), export ... from "x".
+const Q = "[\"'`]"; // single, double or template-literal quotes
+const SPEC = `${Q}([^"'\`$]+)${Q}`;
 const SPECIFIERS = [
-  /\bfrom\s*["']([^"']+)["']/g,
-  /\bimport\s*["']([^"']+)["']/g,
-  /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
-  /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
+  new RegExp(`\\bfrom\\s*${SPEC}`, "g"),
+  new RegExp(`\\bimport\\s*${SPEC}`, "g"),
+  new RegExp(`\\bimport\\s*\\(\\s*${SPEC}\\s*[,)]`, "g"), // import("x") and import("x", { ... })
+  new RegExp(`\\brequire\\s*\\(\\s*${SPEC}\\s*\\)`, "g"),
 ];
 // Ways to reach Gemini without the SDK. Tests may set fake keys to prove they are not bundled.
 const KEY_PATTERNS = [
-  [/process\.env\.(GEMINI_API_KEY|API_KEY|GOOGLE_API_KEY)\b/, "reads a Gemini/Google API key"],
-  [/import\.meta\.env\.VITE_[A-Z0-9_]*(GEMINI|GOOGLE)[A-Z0-9_]*/, "exposes a Gemini/Google key to the browser via Vite"],
+  // dot or bracket notation: process.env.X, process.env["X"]
+  [/process\.env(\.|\[\s*["'`])(GEMINI_API_KEY|API_KEY|GOOGLE_API_KEY)\b/, "reads a Gemini/Google API key"],
+  [/import\.meta\.env(\.|\[\s*["'`])VITE_[A-Z0-9_]*(GEMINI|GOOGLE)[A-Z0-9_]*/, "exposes a Gemini/Google key to the browser via Vite"],
   [/generativelanguage\.googleapis\.com/, "calls the Gemini REST API directly"],
 ];
 
