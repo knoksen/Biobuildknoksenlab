@@ -22,6 +22,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Local AI guard (no Gemini / Firebase client, see AI-STUDIO.md)
+        run: npm run check:local-ai
+
       - name: Run Automated Test Suite
         run: npm test
 
