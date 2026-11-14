@@ -13,7 +13,9 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-const PORT = 3000;
+// PORT/HOST from the environment (VPS: HOST=127.0.0.1 behind nginx). Defaults unchanged.
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const ALLOWED_REFERENCE_IMAGE_ORIGINS = new Set<string>([
   // Add trusted origins that are allowed to host reference images.
   // Example: 'https://images.example.com'
@@ -1720,8 +1722,8 @@ async function bootstrap() {
     console.log(`Serving static production files from: ${distPath}`);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`BioBuild Evidence Lab server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`BioBuild Evidence Lab server running on http://${HOST}:${PORT}`);
   });
 }
 
